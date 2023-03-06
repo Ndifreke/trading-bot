@@ -1,0 +1,172 @@
+package main
+
+import (
+	"fmt"
+	"io"
+	"log"
+	"net"
+
+	// "net/http"
+	"os"
+	"trading/api"
+	"trading/trade"
+
+	"trading/trade/limit"
+
+	// "net/http"
+	"sync"
+	"time"
+
+	"github.com/joho/godotenv"
+)
+
+type args = api.ApiArg
+
+const (
+	SERVER = "localhost"
+	PORT   = "8080"
+)
+
+func init() {
+	godotenv.Load()
+}
+
+func do[K float32](j K) {
+	time.Sleep(0)
+	fmt.Println("Will Sleep")
+	// defer wg.Done()
+}
+
+func a(ch chan int) {
+	do[float32](1.9998)
+
+	ch <- 9
+	fmt.Println("First execution")
+	time.Sleep(time.Second * 2)
+	// fmt.Print(wg)
+	// defer wg.Done()
+}
+
+func b(ch chan int, wg *sync.WaitGroup) {
+	fmt.Println("Second execution")
+	fmt.Println(<-ch)
+	// fmt.Print(wg)
+	defer wg.Done()
+
+}
+
+var (
+	count int = 0
+	c         = 300
+	me    sync.Mutex
+)
+
+func counting(wg *sync.WaitGroup, i int, ch chan int) {
+	fmt.Print(i, "This is I")
+	for i := 0; i < c; i++ {
+		fmt.Println(i)
+		count++
+	}
+	defer wg.Done()
+}
+
+type Person struct {
+	Name string
+	any  interface{}
+}
+
+func (p *Person) setName(n string) {
+	p.Name = n
+}
+
+func (p Person) String() {
+	fmt.Print(p.Name)
+}
+
+func main() {
+	var wg sync.WaitGroup
+	_ = wg
+	// bn := binance.New[binance.PriceJson](args{
+	// 	Api: binance.Endpoints.PriceLatest,
+	// })
+	params := map[string]string{"symbol": "USDTAPT"}
+	_ = params
+	// r := bn.RequestWithQuery(params)
+	// fmt.Print(r.Body.Price)
+	// fmt.Print(binance.GetKLine("BTCBUSD","1m"))
+	// d := binance.NewGraph("BNBBUSD","15m")
+	// var j = func (conn *websocket.Conn, d request.MiniTickerData){
+	// 	fmt.Println(d.StreamName)
+	// 	// conn.Close()
+	// }
+	// s := request.PriceStream([]string{"cfxusdt","btcusdt"})
+	// s.ReadMessage(j)
+	// s.Connect()
+	// fmt.Println(d.GetAveragePrice())
+	// request.NewSocket("")
+	// net.Dial()
+	limit.NewLimitTrade(trade.TradeConfig{
+		Price: struct {
+			Sell trade.Price
+			Buy  trade.Price
+		}{
+			Sell: trade.Price{
+				Value:    0,
+				Type:     trade.PriceTypePercent,
+				Quantity: 1,
+			},
+		}, 
+		Symbol: []string{"BNBUSDT"},
+		Action: trade.TradeActionSell,
+		IsCyclick: true,
+	}).Run()
+
+}
+
+func receiver(ch chan int) {
+	time.Sleep(20 * time.Second)
+	ch <- 2
+}
+
+func connect() {
+
+	listener, err := net.Listen("tcp", SERVER+":"+PORT)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Fatal(err)
+			continue
+		}
+		go handleConnection(conn)
+	}
+}
+
+func handleConnection(conn net.Conn) {
+
+	defer conn.Close()
+	for {
+		_, err := io.WriteString(conn, "\nHello My friends")
+		if err != nil {
+			return
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+func client() {
+	clientConn, err := net.Dial("tcp", "127.0.0.1:8080")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer clientConn.Close()
+	mustCopy(os.Stdout, clientConn)
+}
+
+func mustCopy(dst io.Writer, src io.Reader) {
+	if _, err := io.Copy(dst, src); err != nil {
+		log.Fatal(err)
+	}
+}
