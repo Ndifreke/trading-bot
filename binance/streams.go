@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"trading/request"
+	"trading/trade"
 )
 
 const (
@@ -28,15 +29,15 @@ type MiniTickerData struct {
 	} `json:"data"`
 }
 
-func PriceStream(symbols []string) *request.Socket[MiniTickerData] {
-	stream := fmt.Sprintf("%s@miniTicker", strings.ToLower(symbols[0]))
+func PriceStream(symbols []trade.Symbol) *request.Socket[MiniTickerData] {
+	stream := fmt.Sprintf("%s@miniTicker", strings.ToLower(symbols[0].String()))
 	if len(symbols) > 1 {
 		stream = ""
 		for index, symbol := range symbols {
 			if index == 1 {
-				stream = fmt.Sprintf("%s/%s@miniTicker", stream,strings.ToLower( symbol))
+				stream = fmt.Sprintf("%s/%s@miniTicker", stream,strings.ToLower( symbol.String()))
 			} else {
-				stream = fmt.Sprintf("%s%s@miniTicker", stream, strings.ToLower(symbol))
+				stream = fmt.Sprintf("%s%s@miniTicker", stream, strings.ToLower(symbol.String()))
 			}
 		}
 	}
@@ -44,5 +45,6 @@ func PriceStream(symbols []string) *request.Socket[MiniTickerData] {
 	var address = fmt.Sprintf("%s/stream?streams=%s", streamAPI, stream)
 	return request.SocketConnection[MiniTickerData](address)
 }
+
 
 

@@ -37,9 +37,9 @@ func (oco Oco) Run() {
 			Buy  trade.Price
 		}{
 			Sell: trade.Price{
-				Value:    5,
-				Type:     trade.PriceTypePercent,
-				Quantity: 1,
+				PriceRate:     5,
+				PriceRateType: trade.RatePercent,
+				Quantity:      1,
 			},
 		},
 		Symbol: []string{"BNBUSDT"},

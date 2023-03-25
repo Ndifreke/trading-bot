@@ -10,7 +10,6 @@ import (
 	"os"
 	"trading/api"
 	"trading/trade"
-
 	"trading/trade/limit"
 
 	// "net/http"
@@ -105,21 +104,55 @@ func main() {
 	// fmt.Println(d.GetAveragePrice())
 	// request.NewSocket("")
 	// net.Dial()
-	limit.NewLimitTrade(trade.TradeConfig{
+	config := trade.TradeConfig{
 		Price: struct {
 			Sell trade.Price
 			Buy  trade.Price
 		}{
 			Sell: trade.Price{
-				Value:    0,
-				Type:     trade.PriceTypePercent,
-				Quantity: 1,
+				PriceRate:     0,
+				PriceRateType: trade.RatePercent,
+				Quantity:      1,
+				MustProfit:    true,
 			},
-		}, 
-		Symbol: []string{"BNBUSDT"},
-		Action: trade.TradeActionSell,
-		IsCyclick: true,
-	}).Run()
+			Buy: trade.Price{
+				PriceRate:     0.01,
+				PriceRateType: trade.RatePercent,
+				Quantity:      1,
+				MustProfit:    true,
+			},
+		},
+		Symbol: "BNBBUSD",
+		Action: trade.TradeActionBuy,
+		// IsCyclick: true,
+	}
+	config2 := trade.TradeConfig{
+		Price: struct {
+			Sell trade.Price
+			Buy  trade.Price
+		}{
+			Sell: trade.Price{
+				PriceRate:     0,
+				PriceRateType: trade.RatePercent,
+				Quantity:      200,
+			},
+			Buy: trade.Price{
+				PriceRate:     99,
+				PriceRateType: trade.RatePercent,
+				Quantity:      1,
+			},
+		},
+		Symbol: "BTCBUSD",
+		Action: trade.TradeActionBuy,
+		// IsCyclick: true,
+	}
+	_ = config2
+	_ = config
+	// f := trade.GetTradeFee(config,"BUSDUSDT")
+	j := []trade.TradeConfig{config}
+	wg.Add(1)
+	limit.NewLimitTrade(j...).RunAll()
+	wg.Wait()
 
 }
 

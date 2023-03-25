@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"reflect"
+	"runtime"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -27,4 +29,12 @@ func LogError(err error, s string) {
 func LogWarn(s string) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 		log.Warn().Msg(s)
+}
+
+func GetCaller(){
+	pc, a, _, ok := runtime.Caller(1)
+	details := runtime.FuncForPC(pc)
+	if ok && details != nil {
+		fmt.Printf("called from %s\n %s",a, details.Name())
+	}
 }

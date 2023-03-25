@@ -2,7 +2,6 @@ package request
 
 import (
 	"encoding/json"
-	"fmt"
 	_ "fmt"
 
 	// "fmt"
@@ -32,7 +31,7 @@ func Request(api requestApi, decorateFunc func(r *http.Request)) (*http.Response
 	}
 	
 	resp, err := client.Do(req)
-	fmt.Println(resp.Body)
+	// fmt.Println(resp.Body)
 	// dump,_ := httputil.DumpResponse(resp, true)
 	// fmt.Printf("%s", dump)
 	return resp, err

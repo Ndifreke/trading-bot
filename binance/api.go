@@ -121,7 +121,7 @@ func (binance *binanceApi[R]) RequestWithQuery(params map[string]string) api.Req
 	}
 	Ok := res.StatusCode <= 299
 	if !Ok {
-		utils.LogInfo(string(body))
+		utils.LogWarn(string(body))
 	}
 	defer res.Body.Close()
 	return api.RequestResponse[R]{Body: data, Ok: Ok, Error: nil, Response: *res}
