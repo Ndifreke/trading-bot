@@ -72,10 +72,10 @@ func (st *buyTrade) Execute() bool {
 		return false
 	}
 	sold := buy(st)
-	if st.config.IsCyclick && sold && st.extra.Trader != nil {
+	if st.config.IsCyclick && sold && st.extra.TradeManager != nil {
 		buyConfig := config
 		buyConfig.Action = trade.TradeActionSell
-		st.extra.Trader(buyConfig).RunAll()
+		st.extra.TradeManager(buyConfig).Run()
 	}
 	//Finally close the connection used by Trader socket
 	st.connection.Close()

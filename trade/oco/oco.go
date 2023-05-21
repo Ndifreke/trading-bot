@@ -31,7 +31,7 @@ func (oco Oco) Run() {
 		}
 	}
 
-	limit.NewLimitTrade(trade.TradeConfig{
+	limit.NewLimitTradeManager(trade.TradeConfig{
 		Price: struct {
 			Sell trade.Price
 			Buy  trade.Price

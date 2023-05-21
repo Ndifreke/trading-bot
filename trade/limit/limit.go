@@ -11,13 +11,13 @@ import (
 	"trading/utils"
 )
 
-type LimitTrade struct {
+type LimitTradeManager struct {
 	config []trade.TradeConfig
 	socket *request.Socket[binance.MiniTickerData]
 }
 
-func NewLimitTrade(config ...trade.TradeConfig) trade.TradeRunner {
-	return &LimitTrade{
+func NewLimitTradeManager(config ...trade.TradeConfig) trade.Trader {
+	return &LimitTradeManager{
 		config: config,
 		socket: nil,
 	}
@@ -35,7 +35,7 @@ func isStopPrice(t trade.TradeConfig, stopPrice, currentPrice float32) bool {
 	panic(fmt.Sprintf("Unknon trade action %s", t.Action))
 }
 
-func (t *LimitTrade) getConfig(symbol trade.Symbol) trade.TradeConfig {
+func (t *LimitTradeManager) getConfig(symbol trade.Symbol) trade.TradeConfig {
 	for _, tc := range t.config {
 		if tc.Symbol == symbol {
 			return tc
@@ -44,7 +44,7 @@ func (t *LimitTrade) getConfig(symbol trade.Symbol) trade.TradeConfig {
 	return trade.TradeConfig{}
 }
 
-func (t *LimitTrade) getTradeSymbols() []trade.Symbol {
+func (t *LimitTradeManager) getTradeSymbols() []trade.Symbol {
 	var s []trade.Symbol
 	for _, tc := range t.config {
 		s = append(s, tc.Symbol)
@@ -52,15 +52,22 @@ func (t *LimitTrade) getTradeSymbols() []trade.Symbol {
 	return s
 }
 
-func (t *LimitTrade) RunAll() {
-	t.socket = binance.PriceStream(t.getTradeSymbols())
+func (t *LimitTradeManager) Run() {
+	socket := binance.PriceStream(t.getTradeSymbols())
+	t.socket = socket
 	for _, tc := range t.config {
 		if tc.Action.IsBuy() {
-			t.BuyRun(tc)
+			BuyRun(trade.TradeRunner[binance.MiniTickerData]{
+				Config: tc,
+				Socket: socket,
+			})
 		} else if tc.Action.IsSell() {
-			t.SellRun(tc)
+			SellRun(trade.TradeRunner[binance.MiniTickerData]{
+				Config: tc,
+				Socket: socket,
+			})
 		}
-	}
+	} 
 	t.socket.
 		SetIdGetter(
 			func(d binance.MiniTickerData) string {
@@ -94,15 +101,16 @@ func isBuyStop(stopPrice, currentPrice float32) bool {
 // The BuyRun completes a trade by buying when the current price
 // is lower than the last traded price for this pair. Where the stop
 // price is a fixed or a lower percentile of the last traded price of the pair
-func (limitTrade *LimitTrade) BuyRun(t trade.TradeConfig) {
+func BuyRun(t trade.TradeRunner[binance.MiniTickerData]) {
 	// var preTradePrice map[string]float32
 	// if t.Price.Sell.RateIn.IsPercent() {
-	priceAtRun := binance.GetPriceLatest(t.Symbol.String()).Body.Price
+	config := t.Config
+	priceAtRun := binance.GetPriceLatest(config.Symbol.String()).Body.Price
 	// }
 
 	var handleReadMessage = func(conn request.Connection, message binance.MiniTickerData) {
 
-		buyStopPrice := helper.CalculateTradeBuyPrice(t.Price.Buy, priceAtRun)
+		buyStopPrice := helper.CalculateTradeBuyPrice(config.Price.Buy, priceAtRun)
 		utils.LogWarn(fmt.Sprintf("%s Buy Stop Price is %f", message.Data.Symbol, buyStopPrice))
 		utils.LogInfo(fmt.Sprintf("%s Current Buy Price is %v", message.Data.Symbol, message.Data.ClosePrice))
 		utils.LogInfo(fmt.Sprintf("%s Buy Pretrade Price is %v", message.Data.Symbol, priceAtRun))
@@ -112,17 +120,17 @@ func (limitTrade *LimitTrade) BuyRun(t trade.TradeConfig) {
 		if isBuyStop(buyStopPrice, message.Data.ClosePrice) {
 			//Executor will handle the Sell or Buy of this Asset
 			executor.BuyExecutor(
-				t,
+				config,
 				message.Data.ClosePrice,
 				message.Data.Symbol,
 				conn,
 				executor.ExecutorExtra{
 					PreTradePrice: priceAtRun,
-					Trader:        NewLimitTrade,
+					TradeManager:  NewLimitTradeManager,
 				}).Execute()
 		}
 	}
-	limitTrade.socket.RegisterReader(t.Symbol.String(), handleReadMessage)
+	t.Socket.RegisterReader(config.Symbol.String(), handleReadMessage)
 
 }
 
@@ -131,13 +139,13 @@ func isSellStop(stopPrice, currentPrice float32) bool {
 	return int(currentPrice) >= int(stopPrice)
 }
 
-func (lt *LimitTrade) SellRun(t trade.TradeConfig) {
-
-	priceAtRun := binance.GetPriceLatest(t.Symbol.String()).Body.Price
+func SellRun(t trade.TradeRunner[binance.MiniTickerData]) {
+	config := t.Config
+	priceAtRun := binance.GetPriceLatest(config.Symbol.String()).Body.Price
 
 	var handleReadMessage = func(conn request.Connection, message binance.MiniTickerData) {
 
-		sellStopPrice := helper.CalculateTradeSellPrice(t.Price.Sell, priceAtRun)
+		sellStopPrice := helper.CalculateTradeSellPrice(config.Price.Sell, priceAtRun)
 		utils.LogWarn(fmt.Sprintf("%s Sell Stop Price is %f", message.Data.Symbol, sellStopPrice))
 		utils.LogInfo(fmt.Sprintf("%s Current Sell Price is %v", message.Data.Symbol, message.Data.ClosePrice))
 		utils.LogInfo(fmt.Sprintf("%s Sell Pretrade Price is %v", message.Data.Symbol, priceAtRun))
@@ -145,15 +153,14 @@ func (lt *LimitTrade) SellRun(t trade.TradeConfig) {
 		if isSellStop(sellStopPrice, message.Data.ClosePrice) {
 			//Executor will handle the Sell or Buy of this Asset
 			executor.SellExecutor(
-				t,
+				config,
 				message.Data.ClosePrice,
 				conn,
 				executor.ExecutorExtra{
 					PreTradePrice: priceAtRun,
-					Trader:        NewLimitTrade,
+					TradeManager:  NewLimitTradeManager,
 				}).Execute()
 		}
 	}
-	lt.socket.RegisterReader(t.Symbol.String(), handleReadMessage)
-
+	t.Socket.RegisterReader(config.Symbol.String(), handleReadMessage)
 }
