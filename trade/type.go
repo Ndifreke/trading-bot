@@ -1,6 +1,9 @@
 package trade
 
-import "fmt"
+import (
+	"fmt"
+	"trading/request"
+)
 
 const (
 	RatePercent     RateType    = "PERCENT"
@@ -22,28 +25,31 @@ func (pt RateType) IsFixed() bool {
 type TradeAction string
 
 func (ta TradeAction) IsBuy() bool {
-	// fmt.Println(">>>>>",ta)
-	// if ta != TradeActionBuy{
-	// 	panic(fmt.Sprintf("Invalid Buy Trading Action %s", ta))
-	// }
 	return ta == TradeActionBuy
 }
 
 func (ta TradeAction) IsSell() bool {
-	// if ta != TradeActionSell {
-	// 	panic(fmt.Sprintf("Invalid Sell Trading Action %s", ta))
-	// }
 	return ta == TradeActionSell
 }
+
 func (ta TradeAction) String() string {
 	return string(ta)
 }
+
+// func (ta TradeAction) GetLockDelta(cfg TradeConfig) string {
+// 	if ta.IsBuy(){
+
+// 	}
+// }
 
 type Price struct {
 	PriceRate     float32
 	PriceRateType RateType //PERCENT, FIXED_VALUE
 	Quantity      int
 	MustProfit    bool
+	// determines what percentage change in price to lock positive price movement
+	// 
+	LockDelta float32 
 }
 
 type Symbol string
@@ -88,8 +94,13 @@ type TradeConfig struct {
 	IsCyclick     bool // Will run both sell and buy after each other is completed
 }
 
-type TradeRunner interface {
-	BuyRun(t TradeConfig)
-	SellRun(t TradeConfig)
-	RunAll()
+type Trader interface {
+	Run()
+}
+
+type TradeManager func(t ...TradeConfig) Trader
+
+type  TradeRunner [Data any]  struct {
+	Config  TradeConfig
+	Socket *request.Socket[Data]
 }

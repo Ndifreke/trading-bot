@@ -71,10 +71,10 @@ func (st *sellTrade) Execute() bool {
 	//Finally close the connection used by Trader socket
 	st.connection.CloseLog(fmt.Sprintf("%s Sell trade completed", config.Symbol))
 
-	if st.config.IsCyclick && sold && st.extra.Trader != nil {
+	if st.config.IsCyclick && sold && st.extra.TradeManager != nil {
 		buyConfig := config
 		buyConfig.Action = trade.TradeActionBuy
-		st.extra.Trader(buyConfig).RunAll()
+		st.extra.TradeManager(buyConfig).Run()
 	}
 
 	return sold

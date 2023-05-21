@@ -13,7 +13,7 @@ type TradeExecutor interface {
 
 type ExecutorExtra struct {
 	PreTradePrice float32
-	Trader        func(t ...trade.TradeConfig) trade.TradeRunner
+	TradeManager  trade.TradeManager
 }
 
 func summary(action trade.TradeAction, symbol trade.Symbol, lastTradePrice, beforeTradePrice, currentPrice, profit float32, fee helper.TradeFee, quantity int) string {

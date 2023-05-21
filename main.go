@@ -151,7 +151,7 @@ func main() {
 	// f := trade.GetTradeFee(config,"BUSDUSDT")
 	j := []trade.TradeConfig{config}
 	wg.Add(1)
-	limit.NewLimitTrade(j...).RunAll()
+	limit.NewLimitTradeManager(j...).Run()
 	wg.Wait()
 
 }

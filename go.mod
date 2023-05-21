@@ -8,10 +8,19 @@ require (
 )
 
 require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/wsxiaoys/terminal v0.0.0-20160513160801-0940f3fc43a0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+require (
+	github.com/karlseguin/expect v1.0.8
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/stretchr/testify v1.8.2
 	golang.org/x/net v0.6.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 )
