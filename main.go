@@ -12,9 +12,9 @@ import (
 	"trading/trade"
 	"trading/trade/limit"
 
-	// "net/http"
 	"sync"
 	"time"
+	"trading/binance"
 
 	"github.com/joho/godotenv"
 )
@@ -84,6 +84,7 @@ func (p Person) String() {
 
 func main() {
 	var wg sync.WaitGroup
+
 	_ = wg
 	// bn := binance.New[binance.PriceJson](args{
 	// 	Api: binance.Endpoints.PriceLatest,
@@ -99,6 +100,10 @@ func main() {
 	// 	// conn.Close()
 	// }
 	// s := request.PriceStream([]string{"cfxusdt","btcusdt"})
+	// o := binance.GetOrderHistories("PEPEUSDT").ListSell().Latest()
+
+	// fmt.Println(time.Unix(0, o.Time*int64(time.Millisecond)).Format(time.RFC1123), o.Side)
+	binance.CreateOrder("BTCUSDT",9,9,"MARKET", "BUY")
 	// s.ReadMessage(j)
 	// s.Connect()
 	// fmt.Println(d.GetAveragePrice())
@@ -123,7 +128,7 @@ func main() {
 			},
 		},
 		Symbol: "BNBBUSD",
-		Action: trade.TradeActionBuy,
+		Side:   trade.TradeSideBuy,
 		// IsCyclick: true,
 	}
 	config2 := trade.TradeConfig{
@@ -143,7 +148,7 @@ func main() {
 			},
 		},
 		Symbol: "BTCBUSD",
-		Action: trade.TradeActionBuy,
+		Side:   trade.TradeSideBuy,
 		// IsCyclick: true,
 	}
 	_ = config2
@@ -151,7 +156,9 @@ func main() {
 	// f := trade.GetTradeFee(config,"BUSDUSDT")
 	j := []trade.TradeConfig{config}
 	wg.Add(1)
-	limit.NewLimitTradeManager(j...).Run()
+	// limit.NewLimitTradeManager(j...).Run()
+	unused(j)
+	unused(limit.BuyRun)
 	wg.Wait()
 
 }
@@ -202,4 +209,8 @@ func mustCopy(dst io.Writer, src io.Reader) {
 	if _, err := io.Copy(dst, src); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func unused(v any) {
+	_ = v
 }

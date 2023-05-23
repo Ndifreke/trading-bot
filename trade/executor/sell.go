@@ -44,7 +44,7 @@ func (st *sellTrade) IsProfitable() bool {
 func sell(st *sellTrade) bool {
 	lastTradePrice := st.extra.PreTradePrice
 	summary(
-		st.config.Action,
+		st.config.Side,
 		st.config.Symbol,
 		lastTradePrice,
 		st.extra.PreTradePrice,
@@ -73,7 +73,7 @@ func (st *sellTrade) Execute() bool {
 
 	if st.config.IsCyclick && sold && st.extra.TradeManager != nil {
 		buyConfig := config
-		buyConfig.Action = trade.TradeActionBuy
+		buyConfig.Side = trade.TradeSideBuy
 		st.extra.TradeManager(buyConfig).Run()
 	}
 

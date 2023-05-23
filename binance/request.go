@@ -1,11 +1,14 @@
 package binance
 
 import (
-	"fmt"
+	"os"
 	"strconv"
 	"strings"
-	"time"
+
+	// "time"
 	"trading/api"
+
+	"github.com/adshao/go-binance/v2"
 )
 
 type ServerTimeJson struct {
@@ -28,7 +31,6 @@ func GetPriceLatest(symbol string) api.RequestResponse[PriceJson] {
 	params := map[string]string{"symbol": strings.ToUpper(symbol)}
 	return bn.RequestWithQuery(params)
 }
-
 
 type KLineJson struct {
 	OpenTime          int64
@@ -93,14 +95,15 @@ type OrderJson struct {
 	OrigQuoteOrderQty   string  `json:"origQuoteOrderQty"`
 }
 
-func GetOpenOrders() {
-	var bn = New[OrderJson](apiArg{Api: Endpoints.OpenOrders})
-	var timestamp = fmt.Sprintf("%d", time.Now().Unix()*1000)
-	r := bn.RequestWithQuery(map[string]string{
-		"signature":  getSignature(timestamp),
-		"timestamp":  fmt.Sprint(timestamp),
-		"recvWindow": "60000",
-	})
-	_ = r
-	// fmt.Print(r.Ok,r.Body,r.Response)
+
+
+
+
+
+
+
+func GetClient() *binance.Client {
+	var secret = os.Getenv("API_SECRET")
+	var key = os.Getenv("API_KEY")
+	return binance.NewClient(key, secret)
 }

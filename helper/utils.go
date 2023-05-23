@@ -58,13 +58,13 @@ func CalculateTradeSellPrice(price trade.Price, lastTradePrice float32) float32 
 }
 
 func CalculateTradePrice(trade trade.TradeConfig, preTradePrice float32) float32 {
-	switch trade.Action {
+	switch trade.Side {
 	case "BUY":
 		return CalculateTradeBuyPrice(trade.Price.Buy, preTradePrice)
 	case "SELL":
 		return CalculateTradeSellPrice(trade.Price.Sell, preTradePrice)
 	}
-	panic(fmt.Sprintf("Unknown Trade Action %s", trade.Action))
+	panic(fmt.Sprintf("Unknown Trade Action %s", trade.Side))
 }
 
 type TradeFee struct {

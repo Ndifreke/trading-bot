@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	RatePercent     RateType    = "PERCENT"
-	RateFixed       RateType    = "FIXED"
-	TradeActionBuy  TradeAction = "BUY"
-	TradeActionSell TradeAction = "SELL"
+	RatePercent   RateType  = "PERCENT"
+	RateFixed     RateType  = "FIXED"
+	TradeSideBuy  TradeSide = "BUY"
+	TradeSideSell TradeSide = "SELL"
 )
 
 type RateType string
@@ -22,17 +22,17 @@ func (pt RateType) IsFixed() bool {
 	return pt == RateFixed
 }
 
-type TradeAction string
+type TradeSide string
 
-func (ta TradeAction) IsBuy() bool {
-	return ta == TradeActionBuy
+func (ta TradeSide) IsBuy() bool {
+	return ta == TradeSideBuy
 }
 
-func (ta TradeAction) IsSell() bool {
-	return ta == TradeActionSell
+func (ta TradeSide) IsSell() bool {
+	return ta == TradeSideSell
 }
 
-func (ta TradeAction) String() string {
+func (ta TradeSide) String() string {
 	return string(ta)
 }
 
@@ -48,8 +48,8 @@ type Price struct {
 	Quantity      int
 	MustProfit    bool
 	// determines what percentage change in price to lock positive price movement
-	// 
-	LockDelta float32 
+	//
+	LockDelta float32
 }
 
 type Symbol string
@@ -88,8 +88,8 @@ type TradeConfig struct {
 		Sell Price
 		Buy  Price
 	}
-	Action        TradeAction //BUY or SELL
-	StopCondition bool        // a complex condition expression here
+	Side          TradeSide //BUY or SELL
+	StopCondition bool      // a complex condition expression here
 	Symbol        Symbol
 	IsCyclick     bool // Will run both sell and buy after each other is completed
 }
@@ -100,7 +100,7 @@ type Trader interface {
 
 type TradeManager func(t ...TradeConfig) Trader
 
-type  TradeRunner [Data any]  struct {
-	Config  TradeConfig
+type TradeRunner[Data any] struct {
+	Config TradeConfig
 	Socket *request.Socket[Data]
 }

@@ -51,7 +51,7 @@ func buy(st *buyTrade) bool {
 	// buy or sell action on this symbol. How do you calculate the profile
 	lastTradePrice := st.extra.PreTradePrice
 	summary(
-		st.config.Action,
+		st.config.Side,
 		st.config.Symbol,
 		lastTradePrice,
 		st.extra.PreTradePrice,
@@ -74,7 +74,7 @@ func (st *buyTrade) Execute() bool {
 	sold := buy(st)
 	if st.config.IsCyclick && sold && st.extra.TradeManager != nil {
 		buyConfig := config
-		buyConfig.Action = trade.TradeActionSell
+		buyConfig.Side = trade.TradeSideSell
 		st.extra.TradeManager(buyConfig).Run()
 	}
 	//Finally close the connection used by Trader socket

@@ -12,31 +12,31 @@ import (
 )
 
 type LimitTradeManager struct {
-	config []trade.TradeConfig
-	socket *request.Socket[binance.MiniTickerData]
+	tradeConfigs []trade.TradeConfig
+	socket       *request.Socket[binance.MiniTickerData]
 }
 
-func NewLimitTradeManager(config ...trade.TradeConfig) trade.Trader {
+func NewLimitTradeManager(tradeConfigs ...trade.TradeConfig) trade.Trader {
 	return &LimitTradeManager{
-		config: config,
-		socket: nil,
+		tradeConfigs: tradeConfigs,
+		socket:       nil,
 	}
 }
 
 // checks if the current market price is equal to or greater/less than a specified stop price,
 // based on a given trade configuration.
 func isStopPrice(t trade.TradeConfig, stopPrice, currentPrice float32) bool {
-	if t.Action == trade.TradeActionBuy {
+	if t.Side == trade.TradeSideBuy {
 		//Introduce charges
 		return currentPrice <= stopPrice
-	} else if t.Action == trade.TradeActionSell {
+	} else if t.Side == trade.TradeSideSell {
 		return currentPrice >= stopPrice
 	}
-	panic(fmt.Sprintf("Unknon trade action %s", t.Action))
+	panic(fmt.Sprintf("Unknon trade action %s", t.Side))
 }
 
 func (t *LimitTradeManager) getConfig(symbol trade.Symbol) trade.TradeConfig {
-	for _, tc := range t.config {
+	for _, tc := range t.tradeConfigs {
 		if tc.Symbol == symbol {
 			return tc
 		}
@@ -46,28 +46,55 @@ func (t *LimitTradeManager) getConfig(symbol trade.Symbol) trade.TradeConfig {
 
 func (t *LimitTradeManager) getTradeSymbols() []trade.Symbol {
 	var s []trade.Symbol
-	for _, tc := range t.config {
+	for _, tc := range t.tradeConfigs {
 		s = append(s, tc.Symbol)
 	}
 	return s
 }
 
 func (t *LimitTradeManager) Run() {
+	//can be passed as arg
 	socket := binance.PriceStream(t.getTradeSymbols())
+	// t.socket = socket
+	// for _, tc := range t.tradeConfigs {
+	// 	if tc.Action.IsBuy() {
+	// 		BuyRun(trade.TradeRunner[binance.MiniTickerData]{
+	// 			Config: tc,
+	// 			Socket: socket,
+	// 		})
+	// 	} else if tc.Action.IsSell() {
+	// 		SellRun(trade.TradeRunner[binance.MiniTickerData]{
+	// 			Config: tc,
+	// 			Socket: socket,
+	// 		})
+	// 	}
+	// }
+	// t.socket.
+	// 	SetIdGetter(
+	// 		func(d binance.MiniTickerData) string {
+	// 			return d.Data.Symbol
+	// 		}).
+	// 	SubscribeReaders()
+	t.RunWithConnection(socket)
+}
+
+func (t *LimitTradeManager) RunWithConnection(socket *request.Socket[binance.MiniTickerData]) {
+	//can be passed as arg
+	// socket := binance.PriceStream(t.getTradeSymbols())
 	t.socket = socket
-	for _, tc := range t.config {
-		if tc.Action.IsBuy() {
+	for _, tc := range t.tradeConfigs {
+		if tc.Side.IsBuy() {
 			BuyRun(trade.TradeRunner[binance.MiniTickerData]{
 				Config: tc,
 				Socket: socket,
 			})
-		} else if tc.Action.IsSell() {
+		} else if tc.Side.IsSell() {
 			SellRun(trade.TradeRunner[binance.MiniTickerData]{
 				Config: tc,
 				Socket: socket,
 			})
 		}
-	} 
+	}
 	t.socket.
 		SetIdGetter(
 			func(d binance.MiniTickerData) string {

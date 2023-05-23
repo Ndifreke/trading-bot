@@ -32,22 +32,22 @@ func (l *TradeLocker) AddLock(config trade.TradeConfig, initialPrice, stopLimit 
 	return &lock
 }
 
-func (locker *TradeLocker) GetMostProfitableLock() map[trade.TradeAction]*lock {
+func (locker *TradeLocker) GetMostProfitableLock() map[trade.TradeSide]*lock {
 
 	var trackedSellIncrease, trackedBuyIncrease float32
-	highest := make(map[trade.TradeAction]*lock)
+	highest := make(map[trade.TradeSide]*lock)
 
 	for _, lck := range locker.locks {
 		lockIncrease := lck.GetPercentIncrease()
-		action := lck.tradeConfig.Action
+		action := lck.tradeConfig.Side
 
 		if action.IsSell() && lockIncrease > trackedSellIncrease {
 			trackedSellIncrease = lockIncrease
-			highest[lck.tradeConfig.Action] = lck
+			highest[lck.tradeConfig.Side] = lck
 		} else if action.IsBuy() && lockIncrease < trackedBuyIncrease {
 			//assumes buy low fix this
 			trackedBuyIncrease = lockIncrease
-			highest[lck.tradeConfig.Action] = lck
+			highest[lck.tradeConfig.Side] = lck
 		}
 	}
 	return highest
@@ -70,7 +70,7 @@ func (locker *lock) GetPercentIncrease() float32 {
 	return (locker.price - locker.basePrice) / locker.basePrice * 100
 }
 func (l *lock) isHighestLockAction() bool {
-	return l.GetLockOwner().GetMostProfitableLock()[l.tradeConfig.Action] == l
+	return l.GetLockOwner().GetMostProfitableLock()[l.tradeConfig.Side] == l
 }
 
 // Get the minimum amount that the current price has to change in order to Lock in as profit
@@ -117,7 +117,7 @@ func (lock *lock) IsRedemptionDue() bool {
 		return false
 	}
 
-	if lock.tradeConfig.Action.IsBuy() {
+	if lock.tradeConfig.Side.IsBuy() {
 		return false
 	}
 	return redemptionIsDue

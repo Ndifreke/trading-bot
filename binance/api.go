@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 	"trading/api"
 	"trading/request"
 	"trading/utils"
@@ -23,6 +24,9 @@ type ErrorJson struct {
 const (
 	prodBaseUrl string = "https://api.binance.com"
 	devBaseUrl  string = "https://testnet.binance.vision"
+	timestampKey  = "timestamp"
+	signatureKey  = "signature"
+	recvWindowKey = "recvWindow"
 )
 
 type apiArg = api.ApiArg
@@ -30,7 +34,10 @@ type apiArg = api.ApiArg
 func getSignature(message string) string {
 	var secret = os.Getenv("API_SECRET")
 	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(message))
+	_, err := mac.Write([]byte(message))
+	if err != nil {
+		panic("mac.Write([]byte(message)) Write Error")
+	}
 	return fmt.Sprintf("%x", mac.Sum(nil))
 }
 
@@ -48,7 +55,7 @@ func setHeaders(req *http.Request) {
 	var key = os.Getenv("API_KEY")
 
 	// timestamp := fmt.Sprintf("timestamp=%d", time.Now().Unix() * 1000)
-	// req.Header.Set("X-MBX-SIGNATURE", getSignature(timestamp))
+	// req.Header.Set("X-MBX-SIGNATURE", getSignature("timestamp"))
 	req.Header.Set("X-MBX-APIKEY", key)
 	// req.Header.Set("X-MBX-TIMESTAMP", timestamp)
 }
@@ -128,12 +135,23 @@ func (binance *binanceApi[R]) RequestWithQuery(params map[string]string) api.Req
 
 }
 
+func currentTimestamp() int64 {
+	t := time.Now()
+	return t.UnixNano() / int64(time.Millisecond)
+}
+
 func parseParams(endpoint string, param map[string]string) string {
 	u, _ := url.Parse(endpoint)
+
 	query := u.Query()
 	for k, v := range param {
 		query.Add(k, v)
 	}
+	
+	query.Set(timestampKey, fmt.Sprint(currentTimestamp()));
+	query.Set(recvWindowKey, "6000");
+	query.Add(signatureKey, getSignature(query.Encode()));
 	u.RawQuery = query.Encode()
+
 	return u.String()
 }
