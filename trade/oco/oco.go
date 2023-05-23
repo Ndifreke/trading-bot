@@ -43,7 +43,7 @@ func (oco Oco) Run() {
 			},
 		},
 		Symbol: []string{"BNBUSDT"},
-		Action: "SELL",
+		Side:   "SELL",
 	}).RunB(predicateFun())
 
 }

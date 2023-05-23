@@ -16,7 +16,7 @@ type ExecutorExtra struct {
 	TradeManager  trade.TradeManager
 }
 
-func summary(action trade.TradeAction, symbol trade.Symbol, lastTradePrice, beforeTradePrice, currentPrice, profit float32, fee helper.TradeFee, quantity int) string {
+func summary(action trade.TradeSide, symbol trade.Symbol, lastTradePrice, beforeTradePrice, currentPrice, profit float32, fee helper.TradeFee, quantity int) string {
 	_profit := symbol.FormatBasePrice(profit)
 	_quantity := symbol.FormatBasePrice(float32(quantity))
 	_beforeTradePrice := symbol.FormatQuotePrice(beforeTradePrice)

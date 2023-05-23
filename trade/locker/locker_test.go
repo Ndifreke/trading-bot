@@ -15,10 +15,9 @@ func TestTradeLocker(t *testing.T) {
 
 	tradeLocker := NewTradeLocker()
 
-	
 	tc1 := trade.TradeConfig{
 		Symbol: "BTCUSD",
-		Action: trade.TradeActionSell,
+		Side:   trade.TradeSideSell,
 		Price: struct {
 			Sell trade.Price
 			Buy  trade.Price
@@ -38,7 +37,7 @@ func TestTradeLocker(t *testing.T) {
 	}
 	tc2 := trade.TradeConfig{
 		Symbol: "ETHUSDC",
-		Action: trade.TradeActionSell,
+		Side:   trade.TradeSideSell,
 		Price: struct {
 			Sell trade.Price
 			Buy  trade.Price
@@ -56,7 +55,6 @@ func TestTradeLocker(t *testing.T) {
 			},
 		},
 	}
-
 
 	lockOne := tradeLocker.AddLock(tc1, 10, 50)
 	lockTwo := tradeLocker.AddLock(tc2, 5, 16)
