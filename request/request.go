@@ -38,3 +38,5 @@ func Request(api requestApi, decorateFunc func(r *http.Request)) (*http.Response
 	// fmt.Printf("%s", dump)
 	return resp, err
 }
+
+

@@ -1,80 +1,79 @@
 package executor
 
 import (
-	"fmt"
+	"trading/binance"
 	"trading/helper"
-	"trading/request"
-	"trading/trade"
+	"trading/names"
 )
 
-type sellTrade struct {
-	latestPrice float32
-	connection  request.Connection
-	extra       ExecutorExtra
-	config      trade.TradeConfig
-	fees        helper.TradeFee
-}
+type sellExecutor executorType
 
 func SellExecutor(
-	config trade.TradeConfig,
-	currentPrice float32,
-	connection request.Connection,
-	extra ExecutorExtra,
-) *sellTrade {
+	config names.TradeConfig,
+	marketPrice float64,
+	tradeStartPrice float64,
+) ExecutorInterface {
 
-	return &sellTrade{
-		currentPrice,
-		connection,
-		extra,
+	return &sellExecutor{
+		marketPrice,
+		tradeStartPrice,
 		config,
 		helper.TradeFee{},
 	}
 }
 
-func (st *sellTrade) IsProfitable() bool {
+func (exec *sellExecutor) IsProfitable() bool {
 	// We can look at the trade history and get the last trade
 	// for symbol if action == Sell last trade == symbol.lastBuy
 	// if does not exist then assume asset must have been transfered in
-	if !st.config.Price.Sell.MustProfit || st.extra.PreTradePrice == 0 {
+	if !exec.config.Price.Sell.MustProfit || exec.tradeStartPrice == 0 {
 		return true
 	}
-	return (st.latestPrice - st.extra.PreTradePrice) > st.fees.Value*2
+	return (exec.marketPrice - exec.tradeStartPrice) > exec.fees.Value*2
 }
 
-func sell(st *sellTrade) bool {
-	lastTradePrice := st.extra.PreTradePrice
+func sell(st *sellExecutor) bool {
+	lastTradePrice := st.tradeStartPrice
+	sellOrder, err := binance.CreateSellMarketOrder(
+		st.config.Symbol,
+		st.marketPrice,
+		st.config.Price.Sell.Quantity,
+	)
+	if err != nil {
+		return false
+	}
 	summary(
 		st.config.Side,
 		st.config.Symbol,
 		lastTradePrice,
-		st.extra.PreTradePrice,
-		st.latestPrice,
-		st.latestPrice-lastTradePrice,
+		st.tradeStartPrice,
+		st.marketPrice,
+		st.marketPrice-lastTradePrice,
 		st.fees,
 		st.config.Price.Sell.Quantity,
+		*sellOrder,
 	)
 	return true
 }
 
-func (st *sellTrade) Execute() bool {
-	config := st.config
-	st.fees = helper.GetTradeFee(st.config, st.latestPrice)
-	if !st.IsProfitable() {
+func (exec *sellExecutor) Execute() bool {
+	config := exec.config
+	exec.fees = helper.GetTradeFee(exec.config, exec.marketPrice)
+	if !exec.IsProfitable() {
 		// Dont Sell if user wanted to make profit by force
 		return false
 	}
-	sold := sell(st)
+	sold := sell(exec)
 	if !sold {
 		return sold
 	}
 
 	//Finally close the connection used by Trader socket
-	st.connection.CloseLog(fmt.Sprintf("%s Sell trade completed", config.Symbol))
+	// st.extra.Connection.CloseLog(fmt.Sprintf("%s Sell trade completed", config.Symbol))
 
-	if st.config.IsCyclick && sold && st.extra.TradeManager != nil {
+	if exec.config.IsCyclick && sold {
 		buyConfig := config
-		buyConfig.Side = trade.TradeSideBuy
-		st.extra.TradeManager(buyConfig).Run()
+		buyConfig.Side = names.TradeSideBuy
 	}
 
 	return sold

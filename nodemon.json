@@ -3,7 +3,7 @@
     "homepage": "http://nodemon.io",
     "...": "... other standard package.json values",
     "nodemonConfig": {
-      "ignore": ["**/test/**", "**/docs/**"],
+      "ignore": ["**/test/**", "**/docs/**", "ui/src/data/kline.json"],
       "delay": 12000
     }
   }

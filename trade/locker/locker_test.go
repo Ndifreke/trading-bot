@@ -2,7 +2,7 @@ package locker
 
 import (
 	"testing"
-	"trading/trade"
+	"trading/names"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -11,60 +11,52 @@ const (
 	sellMinimum = 5
 )
 
-func TestTradeLocker(t *testing.T) {
+func TestTradeLockerSell(t *testing.T) {
 
 	tradeLocker := NewTradeLocker()
 
-	tc1 := trade.TradeConfig{
+	tc1 := names.TradeConfig{
 		Symbol: "BTCUSD",
-		Side:   trade.TradeSideSell,
+		Side:   names.TradeSideSell,
 		Price: struct {
-			Sell trade.Price
-			Buy  trade.Price
+			Sell names.Price
+			Buy  names.Price
 		}{
-			Buy: trade.Price{
-				PriceRate:     1,
-				PriceRateType: trade.RatePercent,
-				Quantity:      2,
-			},
-			Sell: trade.Price{
-				PriceRate:     1,
-				PriceRateType: trade.RatePercent,
-				Quantity:      2,
-				LockDelta:     10,
+
+			Sell: names.Price{
+				RateLimit: 1,
+				RateType:  names.RatePercent,
+				Quantity:  2,
+				LockDelta: 10,
 			},
 		},
 	}
-	tc2 := trade.TradeConfig{
+	tc2 := names.TradeConfig{
 		Symbol: "ETHUSDC",
-		Side:   trade.TradeSideSell,
+		Side:   names.TradeSideSell,
 		Price: struct {
-			Sell trade.Price
-			Buy  trade.Price
+			Sell names.Price
+			Buy  names.Price
 		}{
-			Buy: trade.Price{
-				PriceRate:     1,
-				PriceRateType: trade.RatePercent,
-				Quantity:      2,
-			},
-			Sell: trade.Price{
-				PriceRate:     1,
-				PriceRateType: trade.RatePercent,
-				Quantity:      2,
-				LockDelta:     2,
+
+			Sell: names.Price{
+				RateLimit: 1,
+				RateType:  names.RatePercent,
+				Quantity:  2,
+				LockDelta: 2,
 			},
 		},
 	}
 
-	lockOne := tradeLocker.AddLock(tc1, 10, 50)
-	lockTwo := tradeLocker.AddLock(tc2, 5, 16)
+	lockOne := tradeLocker.AddLock(tc1, 10, 50).(*Lock)
+	lockTwo := tradeLocker.AddLock(tc2, 5, 16).(*Lock)
 	assert.Equal(t, lockOne.GetLockOwner(), lockTwo.GetLockOwner(), "Expected TradeLocker to be the same")
 
-	assert.Equal(t, lockOne.GetBasePrice(), float32(10), "Lock initial price to be 10")
-	assert.Equal(t, lockOne.GetLossLimit(), float32(50), "Lock stop limit to be set")
+	assert.Equal(t, lockOne.PretradePrice(), float64(10), "Lock initial price to be 10")
+	assert.Equal(t, lockOne.GetLossLimit(), float64(50), "Lock stop limit to be set")
 
 	assert.Equal(t, lockOne.getMinimumLockUnit(),
-		float32(sellMinimum), "Minimum lock unit to be in percentage of stopLimit")
+		float64(sellMinimum), "Minimum lock unit to be in percentage of stopLimit")
 
 	// assert.Equal(t, lockOne.LockedPrice(), float32(10), "Expect tc1Lock initial locked price to equal initial price")
 	lockOne.TryLockPrice(10)
@@ -78,10 +70,10 @@ func TestTradeLocker(t *testing.T) {
 	lockOne.TryLockPrice(59)
 	assert.False(t, lockOne.IsRedemptionCandidate(), "Lock should not be readeamable if the dips below minimum and increases again")
 
-	assert.Equal(t, lockTwo.GetBasePrice(), float32(5))
-	assert.Equal(t, lockTwo.GetLossLimit(), float32(16), "<Lock2> stop limit to be set")
+	assert.Equal(t, lockTwo.PretradePrice(), float64(5))
+	assert.Equal(t, lockTwo.GetLossLimit(), float64(16), "<Lock2> stop limit to be set")
 	assert.Equal(t, lockTwo.getMinimumLockUnit(),
-		float32(0.32), "<Lock2> Minimum lock unit to be in percentage of stopLimit")
+		float64(0.32), "<Lock2> Minimum lock unit to be in percentage of stopLimit")
 	lockTwo.TryLockPrice(4)
 	assert.False(t, lockTwo.IsRedemptionCandidate(), "<Lock2> redeamable if cuurent price is less than stopLimit")
 
@@ -96,4 +88,122 @@ func TestTradeLocker(t *testing.T) {
 	assert.True(t, lockOne.IsRedemptionDue(), "<Lock1> As a single redemption it should be due")
 	assert.False(t, lockOne.isHighestLockAction())
 	assert.True(t, lockTwo.isHighestLockAction())
+
+	cfg2 := names.TradeConfig{
+		Symbol: "BNBBUSD",
+		Side:   names.TradeSideSell,
+		Price: struct {
+			Sell names.Price
+			Buy  names.Price
+		}{
+			Sell: names.Price{
+				RateLimit: 0,
+				RateType:  names.RatePercent,
+				Quantity:  0,
+				LockDelta: 0.32838497606132194,
+			},
+		},
+	}
+
+	lockThree := tradeLocker.AddLock(cfg2, 247.100000, 247.911768).(*Lock)
+	lockThree.TryLockPrice(246.200000)
+	assert.False(t, lockThree.IsRedemptionDue())
+}
+
+func TestTradeLockerBuy(t *testing.T) {
+
+	tradeLocker := NewTradeLocker()
+
+	tc1 := names.TradeConfig{
+		Symbol: "BTCUSD",
+		Side:   names.TradeSideBuy,
+		Price: struct {
+			Sell names.Price
+			Buy  names.Price
+		}{
+			Buy: names.Price{
+				RateLimit: 1,
+				RateType:  names.RatePercent,
+				Quantity:  2,
+				LockDelta: 10,
+			},
+		},
+	}
+	tc2 := names.TradeConfig{
+		Symbol: "ETHUSDC",
+		Side:   names.TradeSideBuy,
+		Price: struct {
+			Sell names.Price
+			Buy  names.Price
+		}{
+			Buy: names.Price{
+				RateLimit: 1,
+				RateType:  names.RatePercent,
+				Quantity:  2,
+				LockDelta: 2,
+			},
+		},
+	}
+
+	lockOne := tradeLocker.AddLock(tc1, 50, 20).(*Lock)
+	lockTwo := tradeLocker.AddLock(tc2, 16, 5).(*Lock)
+	assert.Equal(t, lockOne.GetLockOwner(), lockTwo.GetLockOwner(), "Expected TradeLocker to be the same")
+
+	assert.Equal(t, lockOne.PretradePrice(), float64(50), "Lock initial price to be 10")
+	assert.Equal(t, lockOne.GetLossLimit(), float64(20), "Lock stop limit to be set")
+
+	assert.Equal(t, lockOne.getMinimumLockUnit(),
+		float64(2), "Minimum lock unit to be in percentage of stopLimit")
+
+	lockOne.TryLockPrice(22)
+	assert.False(t, lockOne.IsRedemptionCandidate(), "Not redeamable if cuurent price is greater than buy stopLimit")
+
+	lockOne.TryLockPrice(10)
+	assert.False(t, lockOne.IsRedemptionCandidate(), "Not redeamable if cuurent buy price is decreases and has not made a rebound by at least minimum lock")
+
+	lockOne.TryLockPrice(15)
+	assert.True(t, lockOne.IsRedemptionCandidate(), "Lock should be redeamable if the next buy price drops increases by minimum lock amount but still profitable")
+	lockOne.TryLockPrice(13)
+	assert.False(t, lockOne.IsRedemptionCandidate(), "Lock should not be readeamable if buy pices is readeamable but next minimum price increase returns it back into the dips")
+
+	assert.Equal(t, lockTwo.PretradePrice(), float64(16))
+	assert.Equal(t, lockTwo.GetLossLimit(), float64(5), "<Lock2> stop limit to be set")
+	assert.Equal(t, lockTwo.getMinimumLockUnit(),
+		float64(0.1), "<Lock2> Minimum lock unit to be in percentage of stopLimit")
+	lockTwo.TryLockPrice(11)
+	assert.False(t, lockTwo.IsRedemptionCandidate(), "<Lock2> not redeamable if current price is greater than stoplimit")
+
+	lockTwo.TryLockPrice(3)
+	lockTwo.TryLockPrice(3.1)
+	assert.True(t, lockTwo.IsRedemptionCandidate(), "<Lock2> redeamable if current price reduces by minLimit but greater than stopLimit")
+
+	lockOne.TryLockPrice(0.1)
+	// lockOne.TryLockPrice(5)
+	assert.False(t, lockOne.IsRedemptionCandidate(), "should not be redeamable if it has the highest increase but redemption is not due")
+	
+	assert.True(t, lockTwo.IsRedemptionDue(),"should be due for redemption after minimum increase as a single lock")
+	assert.False(t, lockTwo.IsRedemptionCandidate(), "should not be redeamable if redemption is not due but is not the highest lock")
+
+	assert.True(t, lockOne.isHighestLockAction())
+	assert.False(t, lockTwo.isHighestLockAction())
+
+	cfg2 := names.TradeConfig{
+		Symbol: "BNBBUSD",
+		Side:   names.TradeSideBuy,
+		Price: struct {
+			Sell names.Price
+			Buy  names.Price
+		}{
+			Sell: names.Price{
+				RateLimit:     0,
+				RateType: names.RatePercent,
+				Quantity:      0,
+				LockDelta:     0.32838497606132194,
+			},
+		},
+	}
+
+	lockThree := tradeLocker.AddLock(cfg2, 247.100000, 247.911768).(*Lock)
+	lockThree.TryLockPrice(246.200000)
+	assert.False(t, lockThree.IsRedemptionDue())
 }

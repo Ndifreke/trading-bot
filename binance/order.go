@@ -4,19 +4,22 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"trading/api"
-	"trading/trade"
-	"trading/utils"
-
 	"github.com/adshao/go-binance/v2"
+	"trading/names"
+	"trading/utils"
 )
 
 type Order = *binance.Order
 type OrderHistory []Order
 
-func GetOpenOrders() api.RequestResponse[[]OrderJson] {
-	var bn = New[[]OrderJson](apiArg{Api: Endpoints.OpenOrders})
-	return bn.Request()
+func GetOpenOrders() []Order { //api.RequestResponse[[]OrderJson]
+	orders, err := GetClient().NewListOpenOrdersService().Do(context.Background())
+	// var bn = New[[]OrderJson](apiArg{Api: Endpoints.OpenOrders})
+	// return bn.Request()
+	if err != nil {
+		utils.LogError(err, "GetOpenOrders")
+	}
+	return orders
 }
 
 func GetOrderHistories(symbol string) OrderHistory {
@@ -51,7 +54,7 @@ func (o OrderHistory) Latest() Order {
 	return o[len(o)-1]
 }
 
-func CreateOrder(symbol trade.Symbol, price float64, quantity float64, side trade.TradeSide, orderType binance.OrderType) (*binance.CreateOrderResponse, error) {
+func CreateOrder(symbol names.Symbol, price float64, quantity float64, side names.TradeSide, orderType binance.OrderType) (*binance.CreateOrderResponse, error) {
 	data, err := GetClient().
 		NewCreateOrderService().
 		Price(strconv.FormatFloat(price, 'f', -1, 64)).
@@ -63,10 +66,10 @@ func CreateOrder(symbol trade.Symbol, price float64, quantity float64, side trad
 	return data, err
 }
 
-func CreateBuyMarketOrder(symbol trade.Symbol, price float64, quantity float64) (*binance.CreateOrderResponse, error) {
-	return CreateOrder(symbol, price, quantity, trade.TradeSideBuy, binance.OrderTypeMarket)
+func CreateBuyMarketOrder(symbol names.Symbol, price float64, quantity float64) (*binance.CreateOrderResponse, error) {
+	return CreateOrder(symbol, price, quantity, names.TradeSideBuy, binance.OrderTypeMarket)
 }
 
-func CreateSellMarketOrder(symbol trade.Symbol, price float64, quantity float64) (*binance.CreateOrderResponse, error) {
-	return CreateOrder(symbol, price, quantity, trade.TradeSideSell, binance.OrderTypeMarket)
+func CreateSellMarketOrder(symbol names.Symbol, price float64, quantity float64) (*binance.CreateOrderResponse, error) {
+	return CreateOrder(symbol, price, quantity, names.TradeSideSell, binance.OrderTypeMarket)
 }
