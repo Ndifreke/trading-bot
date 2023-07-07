@@ -1,40 +1,33 @@
 package executor
 
 import (
-	"fmt"
+	"trading/binance"
 	"trading/helper"
-	"trading/request"
-	"trading/trade"
+	"trading/names"
 )
 
-type buyTrade struct {
-	latestPrice float32
-	connection  request.Connection
-	extra       ExecutorExtra
-	config      trade.TradeConfig
-	fees        helper.TradeFee
-}
+type buyExecutor executorType
 
 func BuyExecutor(
-	config trade.TradeConfig,
-	currentPrice float32,
-	symbol string,
-	connection request.Connection,
-	extra ExecutorExtra,
+	config names.TradeConfig,
+	marketPrice float64,
+	tradeStartPrice float64,
+	// basePrice float64,
+	// connection request.Connection,
+	// extra ExecutorExtraType,
 
-) *buyTrade {
-	return &buyTrade{
-		currentPrice,
-		connection,
-		extra,
+) ExecutorInterface {
+	return &buyExecutor{
+		marketPrice,
+		tradeStartPrice,
 		config,
 		helper.TradeFee{},
 	}
 }
 
-func (st buyTrade) IsProfitable() bool {
+func (exec buyExecutor) IsProfitable() bool {
 
-	if !st.config.Price.Buy.MustProfit || st.extra.PreTradePrice == 0 {
+	if !exec.config.Price.Buy.MustProfit || exec.tradeStartPrice == 0 {
 		// The Price we will be buying is less than the price when we started this
 		// trade plus the charges for this trade buy and subsequent sell.
 		// Note we may want to substitute the PriceAtRun to the last price that this
@@ -42,42 +35,50 @@ func (st buyTrade) IsProfitable() bool {
 		// traded Price
 		return true
 	}
-	fmt.Println(st.latestPrice, st.extra.PreTradePrice, st.fees.Value, "WHO")
-	return (st.latestPrice + st.fees.Value) < st.extra.PreTradePrice
+	return (exec.marketPrice + exec.fees.Value) < exec.tradeStartPrice
 }
 
-func buy(st *buyTrade) bool {
+func buy(exec *buyExecutor) bool {
 	//last trade price from API TODO note it could be
 	// buy or sell action on this symbol. How do you calculate the profile
-	lastTradePrice := st.extra.PreTradePrice
+	lastTradePrice := exec.tradeStartPrice
+
+	buyOrder, err := binance.CreateBuyMarketOrder(
+		exec.config.Symbol,
+		exec.marketPrice,
+		exec.config.Price.Sell.Quantity,
+	)
+	if err != nil {
+		return false
+	}
 	summary(
-		st.config.Side,
-		st.config.Symbol,
+		exec.config.Side,
+		exec.config.Symbol,
 		lastTradePrice,
-		st.extra.PreTradePrice,
-		st.latestPrice,
-		st.latestPrice-lastTradePrice,
-		st.fees,
-		st.config.Price.Buy.Quantity,
+		exec.tradeStartPrice,
+		exec.marketPrice,
+		exec.marketPrice-lastTradePrice,
+		exec.fees,
+		exec.config.Price.Buy.Quantity,
+		*buyOrder,
 	)
 	return true
 }
 
-func (st *buyTrade) Execute() bool {
-	config := st.config
-	st.fees = helper.GetTradeFee(st.config, st.latestPrice)
+func (exec *buyExecutor) Execute() bool {
+	config := exec.config
+	exec.fees = helper.GetTradeFee(exec.config, exec.marketPrice)
 
-	if !st.IsProfitable() {
+	if !exec.IsProfitable() {
 		// Dont buy if user wanted to make profit by force
 		return false
 	}
-	sold := buy(st)
-	if st.config.IsCyclick && sold && st.extra.TradeManager != nil {
+	sold := buy(exec)
+	if exec.config.IsCyclick && sold {
 		buyConfig := config
-		buyConfig.Side = trade.TradeSideSell
-		st.extra.TradeManager(buyConfig).Run()
+		buyConfig.Side = names.TradeSideSell
 	}
 	//Finally close the connection used by Trader socket
-	st.connection.Close()
+	// st.extra.Connection.Close()
 	return sold
 }

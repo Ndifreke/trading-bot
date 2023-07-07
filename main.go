@@ -9,14 +9,19 @@ import (
 	// "net/http"
 	"os"
 	"trading/api"
-	"trading/trade"
+	// "trading/helper"
+	"trading/names"
 	"trading/trade/limit"
 
 	"sync"
 	"time"
-	"trading/binance"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/joho/godotenv"
+
+	// "trading/binance"
+	detection "trading/trade/graph"
+	"trading/trade/manager"
 )
 
 type args = api.ApiArg
@@ -32,7 +37,6 @@ func init() {
 
 func do[K float32](j K) {
 	time.Sleep(0)
-	fmt.Println("Will Sleep")
 	// defer wg.Done()
 }
 
@@ -40,15 +44,12 @@ func a(ch chan int) {
 	do[float32](1.9998)
 
 	ch <- 9
-	fmt.Println("First execution")
 	time.Sleep(time.Second * 2)
 	// fmt.Print(wg)
 	// defer wg.Done()
 }
 
 func b(ch chan int, wg *sync.WaitGroup) {
-	fmt.Println("Second execution")
-	fmt.Println(<-ch)
 	// fmt.Print(wg)
 	defer wg.Done()
 
@@ -103,98 +104,109 @@ func main() {
 	// o := binance.GetOrderHistories("PEPEUSDT").ListSell().Latest()
 
 	// fmt.Println(time.Unix(0, o.Time*int64(time.Millisecond)).Format(time.RFC1123), o.Side)
-	binance.CreateOrder("BTCUSDT",9,9,"MARKET", "BUY")
+	// d, _ := binance.CreateOrder("BTCUSDT", 9, 9, "MARKET", "BUY")
+	// unused(d)
+	config := names.TradeConfig{
+		Price: struct {
+			Sell names.Price
+			Buy  names.Price
+		}{
+			Sell: names.Price{
+				RateLimit:  0,
+				RateType:   names.RatePercent,
+				Quantity:   1,
+				MustProfit: true,
+			},
+			Buy: names.Price{
+				RateLimit:  1,
+				RateType:   names.RatePercent,
+				Quantity:   1,
+				MustProfit: true,
+			},
+		},
+		Symbol: "BTCUSDT",
+		Side:   names.TradeSideSell,
+		// IsCyclick: true,
+	}
+	config2 := names.TradeConfig{
+		Price: struct {
+			Sell names.Price
+			Buy  names.Price
+		}{
+			Sell: names.Price{
+				RateLimit: 0,
+				RateType:  names.RatePercent,
+				Quantity:  200,
+			},
+			Buy: names.Price{
+				RateLimit: 99,
+				RateType:  names.RatePercent,
+				Quantity:  1,
+			},
+		},
+		Symbol: "BTCBUSD",
+		Side:   names.TradeSideBuy,
+	}
+	a, b := names.Symbol("BNBBUSD"), names.Symbol("BTCUSDT")
+	unused(b, a)
+	v := a
+	g := detection.NewBinanceGraph(v.String(), "15m", 18)
+	fmt.Println(g.CalculateAveragePriceMovement(), "AVERAGE MOVEMENT")
+	// fmt.Println(g.GetHighLowPrice(), "HIGH LOW")
+	// fmt.Println(g.GetPriceMidpoint(), "MIDPOINT")
+	g.SaveToFile("")
+
+	fmt.Println(g.GetAveragePrice(), "Average")
+	spew.Dump(g.GetTrendPullForce())
+	// fmt.Println(g.GetPriceAvgDifference(), "aStep")
+
 	// s.ReadMessage(j)
 	// s.Connect()
 	// fmt.Println(d.GetAveragePrice())
 	// request.NewSocket("")
 	// net.Dial()
-	config := trade.TradeConfig{
-		Price: struct {
-			Sell trade.Price
-			Buy  trade.Price
-		}{
-			Sell: trade.Price{
-				PriceRate:     0,
-				PriceRateType: trade.RatePercent,
-				Quantity:      1,
-				MustProfit:    true,
-			},
-			Buy: trade.Price{
-				PriceRate:     0.01,
-				PriceRateType: trade.RatePercent,
-				Quantity:      1,
-				MustProfit:    true,
-			},
-		},
-		Symbol: "BNBBUSD",
-		Side:   trade.TradeSideBuy,
-		// IsCyclick: true,
-	}
-	config2 := trade.TradeConfig{
-		Price: struct {
-			Sell trade.Price
-			Buy  trade.Price
-		}{
-			Sell: trade.Price{
-				PriceRate:     0,
-				PriceRateType: trade.RatePercent,
-				Quantity:      200,
-			},
-			Buy: trade.Price{
-				PriceRate:     99,
-				PriceRateType: trade.RatePercent,
-				Quantity:      1,
-			},
-		},
-		Symbol: "BTCBUSD",
-		Side:   trade.TradeSideBuy,
-		// IsCyclick: true,
+
+	config3 := names.TradeConfig{
+		Symbol: v,
+		Side:   names.TradeSideSell,
+		Price: struct{Sell names.Price; Buy names.Price}{},
 	}
 	_ = config2
 	_ = config
-	// f := trade.GetTradeFee(config,"BUSDUSDT")
-	j := []trade.TradeConfig{config}
+	j := []names.TradeConfig{config3} //config
+
 	wg.Add(1)
 	// limit.NewLimitTradeManager(j...).Run()
+	// tradeConfigs := helper.GenerateTradeConfigs(helper.TradeSymbolList)
+	manager.NewTradeManager(j...).SetGraphParam("15m", 18).DoTrade()
+	// manager.NewTradeManager(tradeConfigs...).SetGraphParam("15m", 18).DoTrade()
 	unused(j)
+	// unused(manager.NewTradeManager)
 	unused(limit.BuyRun)
 	wg.Wait()
-
 }
 
-func receiver(ch chan int) {
-	time.Sleep(20 * time.Second)
-	ch <- 2
-}
+// func receiver(ch chan int) {
+// 	time.Sleep(20 * time.Second)
+// 	ch <- 2
+// }
 
-func connect() {
+// func connect() {
 
-	listener, err := net.Listen("tcp", SERVER+":"+PORT)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatal(err)
-			continue
-		}
-		go handleConnection(conn)
-	}
-}
+// 	listener, err := net.Listen("tcp", SERVER+":"+PORT)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	for {
+// 		conn, err := listener.Accept()
+// 		if err != nil {
+// 			log.Fatal(err)
+// 			continue
+// 		}
+// 		go handleConnection(conn)
+// 	}
+// }
 
-func handleConnection(conn net.Conn) {
-
-	defer conn.Close()
-	for {
-		_, err := io.WriteString(conn, "\nHello My friends")
-		if err != nil {
-			return
-		}
-		time.Sleep(time.Second)
-	}
-}
 
 func client() {
 	clientConn, err := net.Dial("tcp", "127.0.0.1:8080")
@@ -211,6 +223,12 @@ func mustCopy(dst io.Writer, src io.Reader) {
 	}
 }
 
-func unused(v any) {
+func unused(v ...any) {
 	_ = v
 }
+
+
+
+
+	
+
