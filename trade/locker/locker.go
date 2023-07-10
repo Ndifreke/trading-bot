@@ -3,15 +3,13 @@ package locker
 import (
 	"fmt"
 	"math"
-	"os"
 	"trading/helper"
 	"trading/names"
 	"trading/utils"
 )
 
 // Lock represents a trade lock.
-type Lock struct {
-	stopLoss                    float64 // Accepted level that price has to go above or below to sell or buy this trade respectively. The locker may decide not to sell at this point if the price keeps going in the positive direction of the sell action, and vice versa.
+type Lock struct {                  float64 // Accepted level that price has to go above or below to sell or buy this trade respectively. The locker may decide not to sell at this point if the price keeps going in the positive direction of the sell action, and vice versa.
 	price                       float64 // Only lock when it is up to a percent lock.
 	pretradePrice               float64 // Starting price.
 	gainsAccrude                float64 // Current gains accrued.
@@ -35,9 +33,10 @@ func NewTradeLocker() names.TradeLockerInterface {
 }
 
 // validateLock checks if a lock configuration is valid.
-func validateLock(config names.TradeConfig, initialPrice, stopLoss float64) {
+func validateLock(config names.TradeConfig, initialPrice float64) {
 	side := config.Side
-	if side.IsSell() && stopLoss <= initialPrice {
+	priceLimit := helper.CalculateTradePrice(config, initialPrice).Limit
+	if side.IsSell() && priceLimit <= initialPrice {
 		utils.LogWarn(
 			fmt.Sprintf(
 				`
@@ -47,9 +46,9 @@ func validateLock(config names.TradeConfig, initialPrice, stopLoss float64) {
 		Initial Price = %f, Profit Limit = %f`,
 				config.Symbol.String(),
 				side.String(),
-				initialPrice, stopLoss,
+				initialPrice, priceLimit,
 			))
-	} else if side.IsBuy() && stopLoss >= initialPrice {
+	} else if side.IsBuy() && priceLimit >= initialPrice {
 		utils.LogWarn(fmt.Sprintf(
 			"\nThe Configuration of %s is setup for losses\n"+
 				"Initial Price is less than the stop profit limit for a %s.\n"+
@@ -57,19 +56,15 @@ func validateLock(config names.TradeConfig, initialPrice, stopLoss float64) {
 			config.Symbol.String(),
 			side.String(),
 			initialPrice,
-			stopLoss,
+			priceLimit,
 		))
-	}
-	if stopLoss == 0 {
-		utils.LogError(fmt.Errorf("stop Loss for %s %s is zero", side.String(), config.Symbol.String()), "Locker")
-		os.Exit(1)
 	}
 }
 
 // AddLock adds a new lock to the trade locker.
-func (l *TradeLocker) AddLock(config names.TradeConfig, initialPrice, stopLoss float64) names.LockInterface {
-	validateLock(config, initialPrice, stopLoss)
-	lock := Lock{stopLoss: stopLoss, price: initialPrice, tradeConfig: config, redemptionIsDue: false, pretradePrice: initialPrice, lockOwner: l, gainsAccrude: initialPrice}
+func (l *TradeLocker) AddLock(config names.TradeConfig, initialPrice float64) names.LockInterface {
+	validateLock(config, initialPrice)
+	lock := Lock{price: initialPrice, tradeConfig: config, redemptionIsDue: false, pretradePrice: initialPrice, lockOwner: l, gainsAccrude: initialPrice}
 	l.locks[config.Symbol] = &lock
 	return &lock
 }
@@ -99,7 +94,7 @@ func (locker *TradeLocker) GetMostProfitableLock() map[names.TradeSide]names.Loc
 
 // GetLossLimit returns the stop loss limit for the lock.
 func (lock *Lock) GetLossLimit() float64 {
-	return lock.stopLoss
+	return helper.CalculateTradePrice(lock.tradeConfig, lock.pretradePrice).Limit
 }
 
 // PretradePrice returns the pre-trade price for the lock.
@@ -115,13 +110,14 @@ func (lock *Lock) GetLockedPrice() float64 {
 // GetLockState returns the current state of the lock.
 func (lock *Lock) GetLockState() names.LockState {
 	return names.LockState{
-		StopLoss:                    lock.stopLoss,
+		StopLoss:                    lock.GetLossLimit(),
 		LockOwner:                   lock.lockOwner,
 		AccrudGains:                 lock.gainsAccrude,
 		TradeConfig:                 lock.tradeConfig,
 		PretradePrice:               lock.pretradePrice,
 		Price:                       lock.price,
-		RedemptionIsDue:             lock.IsRedemptionDue(),
+		IsRedemptionIsDue:           lock.IsRedemptionDue(),
+		IsRedemptionCandidate:       lock.IsRedemptionCandidate(),
 		RedemptionDueCallback:       lock.redemptionDueCallback,
 		RedemptionCandidateCallback: lock.redemptionCandidateCallback,
 	}
@@ -135,7 +131,7 @@ func (lock *Lock) GetLockOwner() names.TradeLockerInterface {
 // GetPercentIncrease calculates the percentage by which the current price has deviated from the pre-trade price.
 // A positive value means the current locked price has gained.
 func (locker Lock) GetPercentIncrease() float64 {
-	return helper.GetPercentChange(locker.price, locker.pretradePrice)
+	return helper.GetPercentGrowth(locker.price, locker.pretradePrice)
 	// (locker.price - locker.basePrice) / locker.basePrice * 100
 }
 
@@ -150,9 +146,9 @@ func (lock *Lock) getMinimumLockUnit() float64 {
 	// LockUnit is derived as the product of stopLossLimit and the percentage
 	// represented by lockDelta
 	if lock.tradeConfig.Side == names.TradeSideBuy {
-		return lock.stopLoss * (lock.tradeConfig.Price.Buy.LockDelta / 100)
+		return lock.GetLossLimit() * (lock.tradeConfig.Buy.LockDelta / 100)
 	}
-	return lock.stopLoss * (lock.tradeConfig.Price.Sell.LockDelta / 100)
+	return lock.GetLossLimit() * (lock.tradeConfig.Sell.LockDelta / 100)
 }
 
 // TryLockPrice attempts to lock the price. A price will only lock if it is greater or less than minimum gain
@@ -162,6 +158,7 @@ func (lock *Lock) TryLockPrice(price float64) {
 
 	priceChange := price - lock.gainsAccrude
 	minimumLock := lock.getMinimumLockUnit()
+	stopLoss := lock.GetLossLimit()
 
 	// update accrud gains everytime price change is greater or less than minimum change
 	if math.Abs(priceChange) >= minimumLock {
@@ -170,41 +167,45 @@ func (lock *Lock) TryLockPrice(price float64) {
 		if config.Side.IsSell() {
 			// If gains are reduced by at least the minimum lock, and the current price is higher than the stop loss,
 			// we sell to avoid further decline in price. There is no need to hold on as this may be a signal of a downturn.
-			gainLostPriceIsProfitable := (price > lock.stopLoss) && !gainIncreasedByMinimumLock
+			gainLostPriceIsProfitable := (price > stopLoss) && !gainIncreasedByMinimumLock
 			lock.redemptionIsDue = gainLostPriceIsProfitable //priceChange <= -minimumLock
 		} else if config.Side.IsBuy() {
 			// If gains are increased by at least the minimum lock, and the current price is lower than the stop loss,
 			// we initiate redemption as it indicates potential profit taking opportunity.
-			lock.redemptionIsDue = (price < lock.stopLoss) && gainIncreasedByMinimumLock
+			lock.redemptionIsDue = (price < stopLoss) && gainIncreasedByMinimumLock
 		}
 	}
+	state := lock.GetLockState()
+	log := fmt.Sprintf(
+		"\n== Locking %f %s %s ==\n"+
+			"Locked Gains          : %f\n"+
+			"Stop Loss             : %f\n"+
+			"Pretrade Price        : %f\n"+
+			"Price                 : %f\n"+
+			"Redemption Due        : %t\n"+
+			"Redemption Candidate  : %t\n"+
+			"Minimum Lock Unit     : %f\n",
+		price,
+		state.TradeConfig.Side.String(),
+		lock.tradeConfig.Symbol,
+		state.AccrudGains,
+		state.StopLoss,
+		state.PretradePrice,
+		price,
+		state.IsRedemptionIsDue,
+		state.IsRedemptionCandidate,
+		lock.getMinimumLockUnit(),
+	)
+	utils.LogInfo(log)
 
 	if lock.redemptionDueCallback != nil && lock.IsRedemptionDue() {
 		lock.redemptionDueCallback(lock)
 	}
 
-	if lock.redemptionCandidateCallback != nil && lock.IsRedemptionCandidate() {
+	// if lock.redemptionCandidateCallback != nil && lock.IsRedemptionCandidate() {
 		lock.redemptionCandidateCallback(lock)
-	}
+	// }
 
-	state := lock.GetLockState()
-	log := fmt.Sprintf(
-		"\n== Locking %f for %s ==\n"+
-			"Locked Gains        : %f\n"+
-			"Stop Loss           : %f\n"+
-			"Pretrade Price      : %f\n"+
-			"Price               : %f\n"+
-			"Due                 : %t\n"+
-			"Minimum Lock Unit   : %f\n",
-		price, lock.tradeConfig.Symbol,
-		state.AccrudGains,
-		state.StopLoss,
-		state.PretradePrice,
-		price,
-		state.RedemptionIsDue,
-		lock.getMinimumLockUnit(),
-	)
-	utils.LogInfo(log)
 }
 
 // determines if it is the most profitable lock from other locks of similar action
@@ -226,5 +227,5 @@ func (l *Lock) SetRedemptionCandidateCallback(cb func(lock names.LockInterface))
 
 // Total amount of units of price delta that has been locked in
 func (lock Lock) getLockedUnits(config names.TradeConfig) float64 {
-	return (lock.gainsAccrude - lock.stopLoss) / lock.getMinimumLockUnit()
+	return (lock.gainsAccrude - lock.GetLossLimit()) / lock.getMinimumLockUnit()
 }

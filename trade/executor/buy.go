@@ -4,6 +4,7 @@ import (
 	"trading/binance"
 	"trading/helper"
 	"trading/names"
+	"trading/utils"
 )
 
 type buyExecutor executorType
@@ -27,7 +28,7 @@ func BuyExecutor(
 
 func (exec buyExecutor) IsProfitable() bool {
 
-	if !exec.config.Price.Buy.MustProfit || exec.tradeStartPrice == 0 {
+	if !exec.config.Buy.MustProfit || exec.tradeStartPrice == 0 {
 		// The Price we will be buying is less than the price when we started this
 		// trade plus the charges for this trade buy and subsequent sell.
 		// Note we may want to substitute the PriceAtRun to the last price that this
@@ -46,9 +47,10 @@ func buy(exec *buyExecutor) bool {
 	buyOrder, err := binance.CreateBuyMarketOrder(
 		exec.config.Symbol,
 		exec.marketPrice,
-		exec.config.Price.Sell.Quantity,
+		exec.config.Sell.Quantity,
 	)
 	if err != nil {
+		utils.LogError(err,"Error Buying")
 		return false
 	}
 	summary(
@@ -59,26 +61,19 @@ func buy(exec *buyExecutor) bool {
 		exec.marketPrice,
 		exec.marketPrice-lastTradePrice,
 		exec.fees,
-		exec.config.Price.Buy.Quantity,
+		exec.config.Buy.Quantity,
 		*buyOrder,
 	)
 	return true
 }
 
 func (exec *buyExecutor) Execute() bool {
-	config := exec.config
 	exec.fees = helper.GetTradeFee(exec.config, exec.marketPrice)
 
-	if !exec.IsProfitable() {
-		// Dont buy if user wanted to make profit by force
-		return false
-	}
+	// if !exec.IsProfitable() {
+	// 	// Dont buy if user wanted to make profit by force
+	// 	return false
+	// }
 	sold := buy(exec)
-	if exec.config.IsCyclick && sold {
-		buyConfig := config
-		buyConfig.Side = names.TradeSideSell
-	}
-	//Finally close the connection used by Trader socket
-	// st.extra.Connection.Close()
 	return sold
 }

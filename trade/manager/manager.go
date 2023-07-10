@@ -1,11 +1,10 @@
 package manager
 
 import (
-	// "trading/binance"
-	"fmt"
-	"log"
+	// "fmt"
 	"math"
 	"sync"
+	"time"
 	"trading/helper"
 	"trading/kline"
 	"trading/names"
@@ -13,7 +12,8 @@ import (
 	"trading/trade/graph"
 	"trading/trade/limit"
 	"trading/trade/locker"
-	"github.com/davecgh/go-spew/spew"
+
+	// "github.com/davecgh/go-spew/spew"
 )
 
 type TradeManager struct {
@@ -40,17 +40,9 @@ func (tm *TradeManager) UstradeTrend(trend graph.TrendType) *TradeManager {
 	return tm
 }
 
-func validateConfig(tradeConfigs ...names.TradeConfig) bool {
-	//check quantity
-	return true
-}
-
 func (tm *TradeManager) DoTrade() *TradeManager {
 	tradeLocker := locker.NewTradeLocker()
 
-	if !validateConfig(tm.configs...) {
-		log.Fatal("Not valid configuration")
-	}
 
 	switch tm.trend {
 	case graph.Limit:
@@ -65,7 +57,7 @@ func (tm *TradeManager) DoTrade() *TradeManager {
 			SetTradeLocker(tradeLocker).
 			SetExecutor(tm.Execute).
 			Run()
-		_ = spew.Dump
+		// _ = spew.Dump
 		// spew.Dump(configs)
 	}
 	return tm
@@ -78,25 +70,25 @@ func configureFromGraph(cfg names.TradeConfig, graph *graph.Graph) names.TradeCo
 	priceAvgMovement := graph.CalculateAveragePriceMovement()
 	entryPoints := graph.FindAverageEntryPoints()
 
-	sell := cfg.Price.Sell
+	sell := cfg.Sell
 
 	// will lock profit everytime the price increases or decreases by priceAvgMovement
 
 	sell.LockDelta = helper.GetUnitPercentageOfPrice(currentPrice, priceAvgMovement)
 	//price from midpoint of the trend to the highes reported gain price by graph
 	sellLimit := math.Max(entryPoints.GainHighPrice, (midpoint + priceAvgMovement))
-	fmt.Println(currentPrice,entryPoints.GainHighPrice,(midpoint +  priceAvgMovement), "DEBUG\n")
-	percentFromMidPointToHighestGain := helper.GetPercentChange(sellLimit, midpoint)
+
+	percentFromMidPointToHighestGain := helper.GetPercentGrowth(sellLimit, midpoint)
 	sell.RateLimit = percentFromMidPointToHighestGain //pullpercentageOfMaxorMiN * mininmumAvagersteps IF BUll * 3 sell if Buy *2 buy
 	sell.RateType = names.RatePercent
 	sell.MustProfit = true
 
-	cfg.Price.Sell = sell
+	cfg.Sell = sell
 
-	if(true){
+	if true {
 		//if breakout or uptrend,
 		//lets reduce the buy stop limit so that we can always catch on the the upgrowth of the graph
-		
+
 	}
 	return cfg
 }
@@ -131,6 +123,7 @@ func (tm *TradeManager) Execute(
 	basePrice float64,
 	done func()) {
 	var sold bool
+
 	if config.Side.IsBuy() {
 		sold = executor.BuyExecutor(config, marketPrice, basePrice).Execute()
 	} else {
@@ -138,15 +131,25 @@ func (tm *TradeManager) Execute(
 	}
 
 	if !sold {
-		return
+		//return
 	}
 
+	done()
+	time.Sleep(9 * time.Second)
+	sideBeforeSwap := config.Side
 	if config.IsCyclick {
 		if config.Side.IsSell() {
 			// reverse the config
 			config.Side = names.TradeSideBuy
 		} else {
 			config.Side = names.TradeSideSell
+		}
+
+		for i, c := range tm.configs {
+			if c.Symbol == config.Symbol && c.Side == sideBeforeSwap {
+				tm.configs[i] = config
+				break;
+			}
 		}
 		// tm.configs.replace(config)
 		//Reinitialise this trade again change sides if the
@@ -156,5 +159,5 @@ func (tm *TradeManager) Execute(
 			UstradeTrend(tm.trend).
 			DoTrade()
 	}
-	done()
+
 }
