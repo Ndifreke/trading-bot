@@ -6,7 +6,6 @@ import (
 	"trading/names"
 	"trading/stream"
 	"trading/utils"
-
 	"github.com/davecgh/go-spew/spew"
 )
 
@@ -27,7 +26,6 @@ type LimitTradeManager struct {
 func NewLimitTradeManager(tradeConfigs ...names.TradeConfig) names.Trader {
 	return &LimitTradeManager{
 		tradeConfigs: tradeConfigs,
-		// streamer:      nil,
 		streamManager: stream.StreamManager{},
 	}
 }
@@ -67,28 +65,13 @@ func (t *LimitTradeManager) Run() {
 			Locker:    t.tradeLocker,
 			Executor:  t.executorFunc,
 		})
-		// if tc.Side.IsBuy() {
-		// 	BuyRun(TradeRunner{
-		// 		Config:    tc,
-		// 		StreamMan: t.streamManager,
-		// 		Locker:    t.tradeLocker,
-		// 		Executor:  t.executorFunc,
-		// 	})
-		// } else if tc.Side.IsSell() {
-		// 	SellRun(TradeRunner{
-		// 		Config:    tc,
-		// 		StreamMan: t.streamManager,
-		// 		Locker:    t.tradeLocker,
-		// 		Executor:  t.executorFunc,
-		// 	})
-		// }
 	}
 }
 
 func (t *LimitTradeManager) SetExecutor(executorFunc names.ExecutorFunc) names.Trader {
 	t.executorFunc = executorFunc
 	return t
-}
+} 
 
 func (t *LimitTradeManager) Done(confg names.TradeConfig) {
 	// todo decide if to close connection
@@ -126,67 +109,6 @@ func Watch(runner TradeRunner) {
 	}
 	streamer.RegisterReader(config.Symbol.String(), reader)
 
-}
-
-// The BuyRun completes a trade by buying when the current price
-// is lower than the last traded price for this pair. Where the stop
-// price is a fixed or a lower percentile of the last traded price of the pair
-func BuyRun(runner TradeRunner) {
-
-	config, lock, executor, streamMan := runner.Config, runner.Locker, runner.Executor, runner.StreamMan
-	streamer := streamMan.GetStream()
-	pretradePrice := binance.GetPriceLatest(config.Symbol.String())
-	configLocker := lock.AddLock(config, pretradePrice) //we mayy not need stop for sell
-
-	configLocker.SetRedemptionCandidateCallback(func(l names.LockInterface) {
-		state := l.GetLockState()
-		executor(
-			state.TradeConfig,
-			state.Price,
-			state.PretradePrice,
-			func() {
-				// Will interrupt other trades since they all use the
-				// same socket connection. This should be determined by
-				// the manager if to call done or not
-				streamer.Close()
-			},
-		)
-	})
-
-	reader := func(conn stream.StreamInterface, message stream.PriceStreamData) {
-		configLocker.TryLockPrice(message.Price)
-	}
-	streamer.RegisterReader(config.Symbol.String(), reader)
-
-}
-
-func SellRun(runner TradeRunner) {
-
-	config, lock, executor, streamMan := runner.Config, runner.Locker, runner.Executor, runner.StreamMan
-	streamer := streamMan.GetStream()
-	pretradePrice := binance.GetPriceLatest(config.Symbol.String())
-	configLocker := lock.AddLock(config, pretradePrice)
-
-	//Set callback for when trade matures for redemption
-	configLocker.SetRedemptionCandidateCallback(func(locker names.LockInterface) {
-		state := locker.GetLockState()
-		executor(
-			state.TradeConfig,
-			state.Price,
-			state.PretradePrice,
-			func() {
-				// Will interrupt other trades since they all use the
-				// same socket connection. This should be determined by
-				// the manager if to call done or not
-				streamer.Close()
-			},
-		)
-	})
-
-	streamReader := func(conn stream.StreamInterface, message stream.PriceStreamData) {
-		configLocker.TryLockPrice(message.Price)
-	}
-	streamer.RegisterReader(config.Symbol.String(), streamReader)
 }
 
 func (t *LimitTradeManager) SetStreamManager(sm stream.StreamManager) {

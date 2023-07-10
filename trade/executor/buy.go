@@ -46,7 +46,6 @@ func buy(exec *buyExecutor) bool {
 
 	buyOrder, err := binance.CreateBuyMarketOrder(
 		exec.config.Symbol,
-		exec.marketPrice,
 		exec.config.Sell.Quantity,
 	)
 	if err != nil {

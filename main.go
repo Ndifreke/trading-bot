@@ -5,17 +5,14 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
 
 	// "net/http"
 	"os"
-	"trading/api"
-
 	// "trading/helper"
-	"trading/names"
-	"trading/trade/limit"
-
 	"sync"
-	"time"
+	"trading/names"
+	// "trading/stream"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/joho/godotenv"
@@ -24,8 +21,6 @@ import (
 	detection "trading/trade/graph"
 	"trading/trade/manager"
 )
-
-type args = api.ApiArg
 
 const (
 	SERVER = "localhost"
@@ -36,56 +31,67 @@ func init() {
 	godotenv.Load()
 }
 
-func do[K float32](j K) {
-	time.Sleep(0)
-	// defer wg.Done()
+func sum(intChanx chan int) chan int {
+	intChan := make(chan int)
+	i := 0
+	go func(){ for {
+		i += 1
+		intChan <- i
+		time.Sleep(4 * time.Second)
+	}}()
+	return intChan
 }
 
-func a(ch chan int) {
-	do[float32](1.9998)
-
-	ch <- 9
-	time.Sleep(time.Second * 2)
-	// fmt.Print(wg)
-	// defer wg.Done()
+func waitAndPrint(intChan chan int) {
+	for {
+		v := <-intChan
+		fmt.Println(v)
+	}
 }
 
-func b(ch chan int, wg *sync.WaitGroup) {
-	// fmt.Print(wg)
-	defer wg.Done()
-
-}
-
-var (
-	count int = 0
-	c         = 300
-	me    sync.Mutex
+const (
+	numItems     = 100000000
+	numChunks    = 10
+	itemsPerChunk = numItems / numChunks
 )
 
-func counting(wg *sync.WaitGroup, i int, ch chan int) {
-	fmt.Print(i, "This is I")
-	for i := 0; i < c; i++ {
-		fmt.Println(i)
-		count++
-	}
+func processChunk(start int, wg *sync.WaitGroup) {
 	defer wg.Done()
-}
 
-type Person struct {
-	Name string
-	any  interface{}
-}
+	for i := start; i < start+itemsPerChunk; i++ {
 
-func (p *Person) setName(n string) {
-	p.Name = n
-}
-
-func (p Person) String() {
-	fmt.Print(p.Name)
+		// Process each item in the chunk
+	}
 }
 
 func main() {
+
+	// Start the timer
+	start := time.Now()
+
+	// Create a wait group to track goroutines
 	var wg sync.WaitGroup
+
+	// Process items in parallel
+	for i := 0; i < numChunks; i++ {
+		wg.Add(1)
+		go processChunk(i*itemsPerChunk, &wg)
+	}
+
+	// Wait for all goroutines to finish
+	wg.Wait()
+
+	// Calculate the elapsed time
+	elapsed := time.Since(start)
+
+	// Print the result
+	fmt.Printf("Elapsed time: %s\n", elapsed)
+
+	// intChan :=  sum(nil)
+
+	// go waitAndPrint(intChan)
+	
+	// var wg sync.WaitGroup
 
 	_ = wg
 	// bn := binance.New[binance.PriceJson](args{
@@ -158,28 +164,28 @@ func main() {
 	// net.Dial()
 
 	config3 := names.TradeConfig{
-		Symbol: "BUSDUSDT",
+		Symbol: "BNBUSDT",
 		Side:   names.TradeSideSell,
-		IsCyclick: true,
+		IsCyclick: !true,
 		Sell: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,
-			RateLimit:  0.0001,
-			LockDelta:  0.0001,
-			Quantity: 100,
+			RateLimit:  0.9,
+			LockDelta:  0.1,
+			Quantity: 0.54,
 		},
 		Buy: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,
-			RateLimit:  0.0001,
-			LockDelta:  0.0001,
+			RateLimit:  0.5,
+			LockDelta:  0.1,
 			Quantity: 100,
 		},
 	}
 	_ = config2
 	_ = config
 	j := []names.TradeConfig{config3} //config
-
+	// pub := stream.NewPubSub(stream.StreamManager{})
 	wg.Add(1)
 	// limit.NewLimitTradeManager(j...).Run()
 	// tradeConfigs := helper.GenerateTradeConfigs(helper.TradeSymbolList)
@@ -187,7 +193,7 @@ func main() {
 	// manager.NewTradeManager(tradeConfigs...).SetGraphParam("15m", 18).DoTrade()
 	unused(j)
 	// unused(manager.NewTradeManager)
-	unused(limit.BuyRun)
+
 	wg.Wait()
 }
 

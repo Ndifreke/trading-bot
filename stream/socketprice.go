@@ -47,6 +47,7 @@ func readSocketDataDispatch(s *Socket) {
 		readerId := s.getDataReaderId(data)
 		reader, ok := s.readers[readerId]
 		if ok {
+			// s.dataChan <- data
 			reader(s, data)
 		}
 	}

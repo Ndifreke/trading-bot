@@ -9,7 +9,7 @@ import (
 )
 
 // Lock represents a trade lock.
-type Lock struct {                  float64 // Accepted level that price has to go above or below to sell or buy this trade respectively. The locker may decide not to sell at this point if the price keeps going in the positive direction of the sell action, and vice versa.
+type Lock struct {               
 	price                       float64 // Only lock when it is up to a percent lock.
 	pretradePrice               float64 // Starting price.
 	gainsAccrude                float64 // Current gains accrued.
@@ -132,7 +132,6 @@ func (lock *Lock) GetLockOwner() names.TradeLockerInterface {
 // A positive value means the current locked price has gained.
 func (locker Lock) GetPercentIncrease() float64 {
 	return helper.GetPercentGrowth(locker.price, locker.pretradePrice)
-	// (locker.price - locker.basePrice) / locker.basePrice * 100
 }
 
 func (l *Lock) isHighestLockAction() bool {
@@ -202,9 +201,9 @@ func (lock *Lock) TryLockPrice(price float64) {
 		lock.redemptionDueCallback(lock)
 	}
 
-	// if lock.redemptionCandidateCallback != nil && lock.IsRedemptionCandidate() {
+	if lock.redemptionCandidateCallback != nil && lock.IsRedemptionCandidate() {
 		lock.redemptionCandidateCallback(lock)
-	// }
+	}
 
 }
 

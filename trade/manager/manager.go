@@ -4,7 +4,7 @@ import (
 	// "fmt"
 	"math"
 	"sync"
-	"time"
+	// "time"
 	"trading/helper"
 	"trading/kline"
 	"trading/names"
@@ -42,8 +42,7 @@ func (tm *TradeManager) UstradeTrend(trend graph.TrendType) *TradeManager {
 
 func (tm *TradeManager) DoTrade() *TradeManager {
 	tradeLocker := locker.NewTradeLocker()
-
-
+	
 	switch tm.trend {
 	case graph.Limit:
 		limit.NewLimitTradeManager(tm.configs...).
@@ -131,14 +130,13 @@ func (tm *TradeManager) Execute(
 	}
 
 	if !sold {
-		//return
+		return
 	}
 
 	done()
-	time.Sleep(9 * time.Second)
 	sideBeforeSwap := config.Side
 	if config.IsCyclick {
-		if config.Side.IsSell() {
+		if config.Side.IsSell() { 
 			// reverse the config
 			config.Side = names.TradeSideBuy
 		} else {

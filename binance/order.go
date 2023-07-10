@@ -54,10 +54,9 @@ func (o OrderHistory) Latest() Order {
 	return o[len(o)-1]
 }
 
-func CreateOrder(symbol names.Symbol, price float64, quantity float64, side names.TradeSide, orderType binance.OrderType) (*binance.CreateOrderResponse, error) {
+func CreateOrder(symbol names.Symbol, quantity float64, side names.TradeSide, orderType binance.OrderType) (*binance.CreateOrderResponse, error) {
 	data, err := GetClient().
 		NewCreateOrderService().
-		// Price(strconv.FormatFloat(price, 'f', -1, 64)).
 		Side(binance.SideType(side.String())).
 		Symbol(symbol.String()).
 		Quantity(strconv.FormatFloat(quantity, 'f', -1, 64)).
@@ -66,10 +65,10 @@ func CreateOrder(symbol names.Symbol, price float64, quantity float64, side name
 	return data, err
 }
 
-func CreateBuyMarketOrder(symbol names.Symbol, price float64, quantity float64) (*binance.CreateOrderResponse, error) {
-	return CreateOrder(symbol, price, quantity, names.TradeSideBuy, binance.OrderTypeMarket)
+func CreateBuyMarketOrder(symbol names.Symbol, quantity float64) (*binance.CreateOrderResponse, error) {
+	return CreateOrder(symbol, quantity, names.TradeSideBuy, binance.OrderTypeMarket)
 }
 
 func CreateSellMarketOrder(symbol names.Symbol, price float64, quantity float64) (*binance.CreateOrderResponse, error) {
-	return CreateOrder(symbol, price, quantity, names.TradeSideSell, binance.OrderTypeMarket)
+	return CreateOrder(symbol, quantity, names.TradeSideSell, binance.OrderTypeMarket)
 }

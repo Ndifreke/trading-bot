@@ -19,13 +19,13 @@ func readApiDataDispatch(s *Stream) {
 	if len(s.readers) < 1 {
 		s.CloseLog("No socket data reader, will close connection")
 	}
-	for { 
+	for {
 		if s.IsClosed() {
 			return
-		} 
+		}
 
 		symbols, err := binance.GetSymbolPrices(s.symbols)
-		
+
 		if err != nil && s.failHandler != nil {
 			s.CloseLog("An Error happened will close and fail over")
 			s.failHandler(s)
@@ -34,8 +34,11 @@ func readApiDataDispatch(s *Stream) {
 		for readerId, reader := range s.readers {
 			Price := symbols[readerId]
 			func(reader func(StreamInterface, PriceStreamData), readerId string) {
-				reader(s, PriceStreamData{Price, readerId})
+				data := PriceStreamData{Price, readerId}
+				// s.dataChan <- data
+				reader(s, data)
 			}(reader, readerId)
+
 		}
 		time.Sleep(1 * time.Second)
 	}
@@ -67,6 +70,7 @@ func NewAPIStream(symbols []string) StreamInterface {
 		readers:     make(map[string]ReaderFunc),
 	}
 }
+
 
 func (s *Stream) CloseLog(message string) {
 	closed := s.Close()
