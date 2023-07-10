@@ -8,8 +8,8 @@ import Lines from "./d3/Line"
 
 export const App = () => (
   <ChakraProvider theme={theme}>
-    {/* <CandlestickChart/> */}
+    <CandlestickChart/>
     {/* <D3/> */}
-    <Lines/>
+    {/* <Lines/> */}
   </ChakraProvider>
 )

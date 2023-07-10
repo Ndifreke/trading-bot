@@ -76,7 +76,7 @@ func (s *Socket) RegisterReader(symbol string, reader ReaderFunc) {
 
 func (s *Socket) Close() bool {
 	s.stopChannel <- struct{}{}
-	s.doneChannel <- struct{}{}
+	// s.doneChannel <- struct{}{}
 	s.streamIsClosed = true
 	return s.streamIsClosed
 }

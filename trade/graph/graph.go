@@ -151,7 +151,7 @@ func (g *Graph) Kline() []kline.KlineData {
 func (g Graph) GetPriceMidpoint() float64 {
 	var sumHighAndLow float64
 	for _, d := range g.getKLineData() {
-		sumHighAndLow = (d.High + d.Low)
+		sumHighAndLow = (d.Open + d.Close)
 	}
 	return sumHighAndLow / 2
 }
@@ -211,6 +211,7 @@ func (graph *Graph) DetermineSMAtrend() TrendType {
 }
 
 func (graph *Graph) SaveToFile(filename string) error {
+
 	var d = struct {
 		TrendName          TrendType          `json:"trendName"`
 		PriceMidpoint      float64            `json:"priceMidpoint"`
@@ -226,11 +227,15 @@ func (graph *Graph) SaveToFile(filename string) error {
 	}
 
 	data, err := json.Marshal(d)
+
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile("./ui/src/data/kline.json", data, 0644)
+
+	err = ioutil.WriteFile("./ui/src/dump/kline.json", data, 0644)
+	
 	if err != nil {
+		fmt.Println(err )
 		return err
 	}
 	return nil
@@ -358,7 +363,7 @@ func (graph *Graph) GetTrendPullForce() TrendPullForce {
 		BullPull:         Bulltrend,
 		BearPull:         Beartrend,
 		Sentiment:        Sentiment,
-		SentimentPercent: helper.GetPercentChange(max, min),
+		SentimentPercent: helper.GetPercentGrowth(max, min),
 	}
 }
 
@@ -392,7 +397,7 @@ func (graph *Graph) GetCandleSpikePull() MarketPullForce {
 
 	return MarketPullForce{
 		Sentiment: sentiment,
-		BullPull:  openPull ,
+		BullPull:  openPull,
 		BearPull:  closePull,
 	}
 }

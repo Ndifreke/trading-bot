@@ -9,6 +9,7 @@ import (
 	// "net/http"
 	"os"
 	"trading/api"
+
 	// "trading/helper"
 	"trading/names"
 	"trading/trade/limit"
@@ -107,42 +108,32 @@ func main() {
 	// d, _ := binance.CreateOrder("BTCUSDT", 9, 9, "MARKET", "BUY")
 	// unused(d)
 	config := names.TradeConfig{
-		Price: struct {
-			Sell names.Price
-			Buy  names.Price
-		}{
-			Sell: names.Price{
-				RateLimit:  0,
-				RateType:   names.RatePercent,
-				Quantity:   1,
-				MustProfit: true,
-			},
-			Buy: names.Price{
-				RateLimit:  1,
-				RateType:   names.RatePercent,
-				Quantity:   1,
-				MustProfit: true,
-			},
+		Sell: names.SideConfig{
+			RateLimit:  0,
+			RateType:   names.RatePercent,
+			Quantity:   1,
+			MustProfit: true,
+		},
+		Buy: names.SideConfig{
+			RateLimit:  1,
+			RateType:   names.RatePercent,
+			Quantity:   1,
+			MustProfit: true,
 		},
 		Symbol: "BTCUSDT",
 		Side:   names.TradeSideSell,
 		// IsCyclick: true,
 	}
 	config2 := names.TradeConfig{
-		Price: struct {
-			Sell names.Price
-			Buy  names.Price
-		}{
-			Sell: names.Price{
-				RateLimit: 0,
-				RateType:  names.RatePercent,
-				Quantity:  200,
-			},
-			Buy: names.Price{
-				RateLimit: 99,
-				RateType:  names.RatePercent,
-				Quantity:  1,
-			},
+		Sell: names.SideConfig{
+			RateLimit: 0,
+			RateType:  names.RatePercent,
+			Quantity:  200,
+		},
+		Buy: names.SideConfig{
+			RateLimit: 99,
+			RateType:  names.RatePercent,
+			Quantity:  1,
 		},
 		Symbol: "BTCBUSD",
 		Side:   names.TradeSideBuy,
@@ -150,7 +141,7 @@ func main() {
 	a, b := names.Symbol("BNBBUSD"), names.Symbol("BTCUSDT")
 	unused(b, a)
 	v := a
-	g := detection.NewBinanceGraph(v.String(), "15m", 18)
+	g := detection.NewBinanceGraph(v.String(), "15m", 8)
 	fmt.Println(g.CalculateAveragePriceMovement(), "AVERAGE MOVEMENT")
 	// fmt.Println(g.GetHighLowPrice(), "HIGH LOW")
 	// fmt.Println(g.GetPriceMidpoint(), "MIDPOINT")
@@ -167,9 +158,23 @@ func main() {
 	// net.Dial()
 
 	config3 := names.TradeConfig{
-		Symbol: v,
+		Symbol: "BUSDUSDT",
 		Side:   names.TradeSideSell,
-		Price: struct{Sell names.Price; Buy names.Price}{},
+		IsCyclick: true,
+		Sell: names.SideConfig{
+			MustProfit: true,
+			RateType:   names.RatePercent,
+			RateLimit:  0.0001,
+			LockDelta:  0.0001,
+			Quantity: 100,
+		},
+		Buy: names.SideConfig{
+			MustProfit: true,
+			RateType:   names.RatePercent,
+			RateLimit:  0.0001,
+			LockDelta:  0.0001,
+			Quantity: 100,
+		},
 	}
 	_ = config2
 	_ = config
@@ -178,7 +183,7 @@ func main() {
 	wg.Add(1)
 	// limit.NewLimitTradeManager(j...).Run()
 	// tradeConfigs := helper.GenerateTradeConfigs(helper.TradeSymbolList)
-	manager.NewTradeManager(j...).SetGraphParam("15m", 18).DoTrade()
+	manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
 	// manager.NewTradeManager(tradeConfigs...).SetGraphParam("15m", 18).DoTrade()
 	unused(j)
 	// unused(manager.NewTradeManager)
@@ -207,7 +212,6 @@ func main() {
 // 	}
 // }
 
-
 func client() {
 	clientConn, err := net.Dial("tcp", "127.0.0.1:8080")
 	if err != nil {
@@ -226,9 +230,3 @@ func mustCopy(dst io.Writer, src io.Reader) {
 func unused(v ...any) {
 	_ = v
 }
-
-
-
-
-	
-

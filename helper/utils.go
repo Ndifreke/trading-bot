@@ -1,7 +1,9 @@
 package helper
 
 import (
-	"fmt"
+	"math"
+	// "math"
+	// "math"
 	"math/rand"
 	"time"
 	"trading/names"
@@ -21,9 +23,9 @@ func calculateSellPriceFromPercent(percentage, price float64) float64 {
 	return price * (1 + increase)
 }
 
-func CalculateTradeBuyFixedPrice(price names.Price, pretradePrice float64) float64 {
+func CalculateTradeBuyFixedPrice(price names.SideConfig, priceRate float64) float64 {
 	if price.RateType.IsPercent() {
-		return calculateBuyPriceFromPercent(price.RateLimit, pretradePrice)
+		return calculateBuyPriceFromPercent(price.RateLimit, priceRate)
 	}
 	return price.RateLimit
 }
@@ -32,21 +34,43 @@ func CalculateTradeBuyFixedPrice(price names.Price, pretradePrice float64) float
 // If the price type is trade.RatePercent, the sell price will be the PriceRate percentage of the last trade price.
 // If the price type is 'fixed', the sell price will be a fixed amount, the PriceRate.
 // returns the calculated sell price for the given Price.
-func CalculateTradeFixedSellPrice(price names.Price, lastTradePrice float64) float64 {
+func CalculateTradeFixedSellPrice(price names.SideConfig, priceRate float64) float64 {
 	if price.RateType.IsPercent() {
-		return calculateSellPriceFromPercent(price.RateLimit, lastTradePrice)
+		return calculateSellPriceFromPercent(price.RateLimit, priceRate)
 	}
 	return price.RateLimit
 }
 
-func CalculateTradePrice(trade names.TradeConfig, preTradePrice float64) float64 {
-	switch trade.Side {
-	case "BUY":
-		return CalculateTradeBuyFixedPrice(trade.Price.Buy, preTradePrice)
-	case "SELL":
-		return CalculateTradeFixedSellPrice(trade.Price.Sell, preTradePrice)
+func CalculateTradePrice(trade names.TradeConfig, priceRate float64) struct {
+	Limit   float64
+	Percent float64
+} {
+	// if trade.Side != names.TradeSideBuy || trade.Side != names.TradeSideSell {
+	// 	panic(fmt.Sprintf("Unknown Trade Action %s", trade.Side))
+	// }
+	var fixedPrice, percent float64
+	if trade.Side == names.TradeSideBuy {
+		fixedPrice = CalculateTradeBuyFixedPrice(trade.Buy, priceRate)
+
+		percent = trade.Buy.RateLimit
+		if trade.Buy.RateType == names.RateFixed {
+			//assumes buy position is always lower than current position
+			percent = GetPercentGrowth(fixedPrice, priceRate)
+		}
+	} else {
+		fixedPrice = CalculateTradeFixedSellPrice(trade.Sell, priceRate)
+
+		percent = trade.Sell.RateLimit
+		if trade.Sell.RateType == names.RateFixed {
+			//assumes sell position is always higher than current position
+			percent = GetPercentGrowth(fixedPrice, priceRate)
+		}
 	}
-	panic(fmt.Sprintf("Unknown Trade Action %s", trade.Side))
+	return struct {
+		Limit   float64
+		Percent float64
+	}{Limit: fixedPrice, Percent: math.Abs(percent)} //GetUnitPercentageOfPrice(fixedPrice-priceRate, priceDifference)
+
 }
 
 type TradeFee struct {
@@ -55,9 +79,10 @@ type TradeFee struct {
 }
 
 func GetTradeFee(trade names.TradeConfig, currentPrice float64) TradeFee {
-	quanity := trade.Price.Sell.Quantity
+	//TODO IMPLEMENT FOR BUY
+	quanity := trade.Sell.Quantity
 	// if trade.Action.IsBuy() {
-	// 	quanity = trade.Price.Buy.Quantity
+	// 	quanity = trade.Buy.Quantity
 	// }
 	// price := binance.GetPriceLatest(symbol).Body.Price
 	fee := (float64(quanity) * currentPrice) * 0.001
@@ -67,10 +92,16 @@ func GetTradeFee(trade names.TradeConfig, currentPrice float64) TradeFee {
 	}
 }
 
-// finds what percent of initial value has current value grown by
-// E.g current = 10, initial = 5, current value has grown by 100% i.e 5 of initial value
-func GetPercentChange(currentValue, initialValue float64) float64 {
-	percentageIncrease := ((currentValue - initialValue) / initialValue) * 100
+// finds what percent of oldValue value has newValue value grown by
+// E.g newValue = 10, oldValue = 5, newValue value has grown by 100% i.e 5 of oldValue value
+func GetPercentGrowth(newValue, oldValue float64) float64 {
+	// divident := oldValue
+	// if oldValue < newValue {
+	// 	divident = newValue
+	// }
+	// max, min := math.Max(newValue, oldValue), math.Min(newValue, oldValue)
+	// percentageIncrease := ((max - min) / min) * 100
+	percentageIncrease := ((newValue - oldValue) / oldValue) * 100
 	return percentageIncrease
 }
 
@@ -78,7 +109,6 @@ func GetPercentChange(currentValue, initialValue float64) float64 {
 func GetUnitPercentageOfPrice(price, priceUnit float64) float64 {
 	return (priceUnit / price) * 100.0
 }
-
 
 var TradeSymbolList = []string{
 	"BTCUSDT",
@@ -161,7 +191,7 @@ func GenerateTradeConfigs(symbols []string) []names.TradeConfig {
 
 	tradeConfigs := make([]names.TradeConfig, 0)
 	for i := 0; i < len(TradeSymbolList); i++ {
-	
+
 		rateLimitSell := rand.Float64() * 5.0
 		rateLimitBuy := rand.Float64() * 5.0
 		quantitySell := rand.Float64() * 5.0
@@ -172,24 +202,19 @@ func GenerateTradeConfigs(symbols []string) []names.TradeConfig {
 		lockDeltaBuy := rand.Float64() * 10.0
 
 		tradeConfig := names.TradeConfig{
-			Price: struct {
-				Sell names.Price
-				Buy  names.Price
-			}{
-				Sell: names.Price{
-					RateLimit:  rateLimitSell,
-					RateType:   names.RatePercent,
-					Quantity:   quantitySell,
-					MustProfit: mustProfitSell,
-					LockDelta:  lockDeltaSell,
-				},
-				Buy: names.Price{
-					RateLimit:  rateLimitBuy,
-					RateType:   names.RatePercent,
-					Quantity:   quantityBuy,
-					MustProfit: mustProfitBuy,
-					LockDelta:  lockDeltaBuy,
-				},
+			Sell: names.SideConfig{
+				RateLimit:  rateLimitSell,
+				RateType:   names.RatePercent,
+				Quantity:   quantitySell,
+				MustProfit: mustProfitSell,
+				LockDelta:  lockDeltaSell,
+			},
+			Buy: names.SideConfig{
+				RateLimit:  rateLimitBuy,
+				RateType:   names.RatePercent,
+				Quantity:   quantityBuy,
+				MustProfit: mustProfitBuy,
+				LockDelta:  lockDeltaBuy,
 			},
 			Side:          names.TradeSideBuy,
 			StopCondition: false,

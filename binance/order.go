@@ -57,7 +57,7 @@ func (o OrderHistory) Latest() Order {
 func CreateOrder(symbol names.Symbol, price float64, quantity float64, side names.TradeSide, orderType binance.OrderType) (*binance.CreateOrderResponse, error) {
 	data, err := GetClient().
 		NewCreateOrderService().
-		Price(strconv.FormatFloat(price, 'f', -1, 64)).
+		// Price(strconv.FormatFloat(price, 'f', -1, 64)).
 		Side(binance.SideType(side.String())).
 		Symbol(symbol.String()).
 		Quantity(strconv.FormatFloat(quantity, 'f', -1, 64)).

@@ -2,7 +2,7 @@ package graph
 
 import (
 	"testing"
-	"trading/binance/kline"
+	"trading/kline"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -18,15 +18,16 @@ var downtrendPullupData = []kline.KlineData{
 }
 
 func TestTradeLocker(t *testing.T) {
-	upKline := NewGraph(kline.GetKLineMock(uptrendPullupData))
-	assert.Equal(t, upKline.GetMarketForcePull().Sentiment, Bull)
-	assert.Equal(t, upKline.GetMarketForcePull().BullPull, 25.0)
-	assert.Equal(t, upKline.GetMarketForcePull().BearPull, 5.0)
 
-	downKline := NewGraph(kline.GetKLineMock(downtrendPullupData))
-	assert.Equal(t, downKline.GetMarketForcePull().Sentiment, Bear)
-	assert.Equal(t, downKline.GetMarketForcePull().BullPull, 2.0)
-	assert.Equal(t, downKline.GetMarketForcePull().BearPull, 5.0)
+	upGraph := NewGraph(kline.GetKLineMock(uptrendPullupData))
+	assert.Equal(t, upGraph.GetCandleSpikePull().Sentiment, Bull)
+	assert.Equal(t, upGraph.GetCandleSpikePull().BullPull, 25.0)
+	assert.Equal(t, upGraph.GetCandleSpikePull().BearPull, 5.0)
 
-	assert.Equal(t, downKline.GetPriceMidpoint(), 17.0)
+	downGraph := NewGraph(kline.GetKLineMock(downtrendPullupData))
+	assert.Equal(t, downGraph.GetCandleSpikePull().Sentiment, Bear)
+	assert.Equal(t, downGraph.GetCandleSpikePull().BullPull, 2.0)
+	assert.Equal(t, downGraph.GetCandleSpikePull().BearPull, 5.0)
+
+	assert.Equal(t, downGraph.GetPriceMidpoint(), 17.0)
 }
