@@ -3,13 +3,14 @@ package locker
 import (
 	"fmt"
 	"math"
+	"sync"
 	"trading/helper"
 	"trading/names"
 	"trading/utils"
 )
 
 // Lock represents a trade lock.
-type Lock struct {                  float64 // Accepted level that price has to go above or below to sell or buy this trade respectively. The locker may decide not to sell at this point if the price keeps going in the positive direction of the sell action, and vice versa.
+type Lock struct {
 	price                       float64 // Only lock when it is up to a percent lock.
 	pretradePrice               float64 // Starting price.
 	gainsAccrude                float64 // Current gains accrued.
@@ -22,13 +23,15 @@ type Lock struct {                  float64 // Accepted level that price has to 
 
 // TradeLocker represents a collection of trade locks.
 type TradeLocker struct {
-	locks map[names.Symbol]*Lock
+	locks     map[names.Symbol]*Lock
+	writeLock sync.RWMutex
 }
 
 // NewTradeLocker creates a new TradeLocker instance.
 func NewTradeLocker() names.TradeLockerInterface {
 	return &TradeLocker{
-		locks: make(map[names.Symbol]*Lock),
+		locks:     make(map[names.Symbol]*Lock),
+		writeLock: sync.RWMutex{},
 	}
 }
 
@@ -63,6 +66,9 @@ func validateLock(config names.TradeConfig, initialPrice float64) {
 
 // AddLock adds a new lock to the trade locker.
 func (l *TradeLocker) AddLock(config names.TradeConfig, initialPrice float64) names.LockInterface {
+	l.writeLock.Lock()
+	defer l.writeLock.Unlock()
+
 	validateLock(config, initialPrice)
 	lock := Lock{price: initialPrice, tradeConfig: config, redemptionIsDue: false, pretradePrice: initialPrice, lockOwner: l, gainsAccrude: initialPrice}
 	l.locks[config.Symbol] = &lock
@@ -71,6 +77,8 @@ func (l *TradeLocker) AddLock(config names.TradeConfig, initialPrice float64) na
 
 // GetMostProfitableLock returns the most profitable lock for each trade side (buy and sell).
 func (locker *TradeLocker) GetMostProfitableLock() map[names.TradeSide]names.LockInterface {
+	locker.writeLock.Lock()
+	defer locker.writeLock.Unlock()
 
 	var trackedSellIncrease, trackedBuyIncrease float64
 	highest := make(map[names.TradeSide]names.LockInterface)
@@ -132,7 +140,6 @@ func (lock *Lock) GetLockOwner() names.TradeLockerInterface {
 // A positive value means the current locked price has gained.
 func (locker Lock) GetPercentIncrease() float64 {
 	return helper.GetPercentGrowth(locker.price, locker.pretradePrice)
-	// (locker.price - locker.basePrice) / locker.basePrice * 100
 }
 
 func (l *Lock) isHighestLockAction() bool {
@@ -202,9 +209,9 @@ func (lock *Lock) TryLockPrice(price float64) {
 		lock.redemptionDueCallback(lock)
 	}
 
-	// if lock.redemptionCandidateCallback != nil && lock.IsRedemptionCandidate() {
+	if lock.redemptionCandidateCallback != nil && lock.IsRedemptionCandidate() {
 		lock.redemptionCandidateCallback(lock)
-	// }
+	}
 
 }
 

@@ -45,9 +45,15 @@ func readSocketDataDispatch(s *Socket) {
 		price, _ := strconv.ParseFloat(event.LastPrice, 64)
 		data := PriceStreamData{Price: price, Symbol: event.Symbol}
 		readerId := s.getDataReaderId(data)
-		reader, ok := s.readers[readerId]
-		if ok {
+		reader, isReader := s.readers[readerId]
+		publishReader, isPublisher := s.readers[BROADCAST_ID]
+
+		if isReader {
 			reader(s, data)
+		}
+
+		if isPublisher {
+			publishReader(s, data)
 		}
 	}
 

@@ -4,6 +4,7 @@ import (
 	"trading/binance"
 	"trading/helper"
 	"trading/names"
+	"trading/user"
 	"trading/utils"
 )
 
@@ -13,10 +14,6 @@ func BuyExecutor(
 	config names.TradeConfig,
 	marketPrice float64,
 	tradeStartPrice float64,
-	// basePrice float64,
-	// connection request.Connection,
-	// extra ExecutorExtraType,
-
 ) ExecutorInterface {
 	return &buyExecutor{
 		marketPrice,
@@ -40,17 +37,20 @@ func (exec buyExecutor) IsProfitable() bool {
 }
 
 func buy(exec *buyExecutor) bool {
-	//last trade price from API TODO note it could be
-	// buy or sell action on this symbol. How do you calculate the profile
-	lastTradePrice := exec.tradeStartPrice
 
+	lastTradePrice := exec.tradeStartPrice
+	quoteBalance := user.CreateUser().GetAccount().GetBalance(exec.config.Symbol.ParseTradingPair().Quote)
+	quantity := exec.config.Sell.Quantity
+
+	if quantity < 0 {
+		quantity = getBuyQuote(quoteBalance.Locked, exec.marketPrice)
+	}
 	buyOrder, err := binance.CreateBuyMarketOrder(
 		exec.config.Symbol,
-		exec.marketPrice,
-		exec.config.Sell.Quantity,
+		quantity,
 	)
 	if err != nil {
-		utils.LogError(err,"Error Buying")
+		utils.LogError(err, "Error Buying")
 		return false
 	}
 	summary(

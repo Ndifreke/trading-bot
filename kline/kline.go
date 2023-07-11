@@ -49,7 +49,6 @@ func NewKline(symbol, interval string, limit int) KLineInterface {
 
 func (kline *KLine) KLineData() []KlineData {
 	if len(kline.data) == 0 {
-		utils.LogInfo("Fetching KLine Data")
 		kline.data = GetKLineData(kline.symbol, kline.interval, kline.pointsLimit)
 	}
 	return kline.data

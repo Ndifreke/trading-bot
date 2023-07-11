@@ -19,13 +19,13 @@ func readApiDataDispatch(s *Stream) {
 	if len(s.readers) < 1 {
 		s.CloseLog("No socket data reader, will close connection")
 	}
-	for { 
+	for {
 		if s.IsClosed() {
 			return
-		} 
+		}
 
 		symbols, err := binance.GetSymbolPrices(s.symbols)
-		
+
 		if err != nil && s.failHandler != nil {
 			s.CloseLog("An Error happened will close and fail over")
 			s.failHandler(s)
@@ -33,9 +33,22 @@ func readApiDataDispatch(s *Stream) {
 		}
 		for readerId, reader := range s.readers {
 			Price := symbols[readerId]
+			if readerId == BROADCAST_ID {
+				// Broadcast should be handled seperatedl
+				continue
+			}
 			func(reader func(StreamInterface, PriceStreamData), readerId string) {
-				reader(s, PriceStreamData{Price, readerId})
+				data := PriceStreamData{Price, readerId}
+				reader(s, data)
 			}(reader, readerId)
+
+		}
+		broadcaster, isBroadcast := s.readers[BROADCAST_ID]
+		if isBroadcast {
+			for readerId, Price := range symbols {
+				data := PriceStreamData{Price, readerId}
+				go broadcaster(s, data)
+			}
 		}
 		time.Sleep(1 * time.Second)
 	}

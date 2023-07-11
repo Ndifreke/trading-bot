@@ -1,10 +1,8 @@
 package manager
 
 import (
-	// "fmt"
 	"math"
 	"sync"
-	"time"
 	"trading/helper"
 	"trading/kline"
 	"trading/names"
@@ -12,9 +10,8 @@ import (
 	"trading/trade/graph"
 	"trading/trade/limit"
 	"trading/trade/locker"
-
-	// "github.com/davecgh/go-spew/spew"
 )
+
 
 type TradeManager struct {
 	interval       string //'15m'
@@ -42,7 +39,6 @@ func (tm *TradeManager) UstradeTrend(trend graph.TrendType) *TradeManager {
 
 func (tm *TradeManager) DoTrade() *TradeManager {
 	tradeLocker := locker.NewTradeLocker()
-
 
 	switch tm.trend {
 	case graph.Limit:
@@ -129,13 +125,10 @@ func (tm *TradeManager) Execute(
 	} else {
 		sold = executor.SellExecutor(config, marketPrice, basePrice).Execute()
 	}
-
 	if !sold {
-		//return
+		return
 	}
-
 	done()
-	time.Sleep(9 * time.Second)
 	sideBeforeSwap := config.Side
 	if config.IsCyclick {
 		if config.Side.IsSell() {
@@ -148,7 +141,7 @@ func (tm *TradeManager) Execute(
 		for i, c := range tm.configs {
 			if c.Symbol == config.Symbol && c.Side == sideBeforeSwap {
 				tm.configs[i] = config
-				break;
+				break
 			}
 		}
 		// tm.configs.replace(config)

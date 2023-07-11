@@ -110,8 +110,22 @@ func GetUnitPercentageOfPrice(price, priceUnit float64) float64 {
 	return (priceUnit / price) * 100.0
 }
 
+var unused = []string{
+	"SOLUSDT",
+	"MKRUSDT",
+	"SNXUSDT",
+	"CRVUSDT",
+}
+
 var TradeSymbolList = []string{
+	"ACAUSDT",
+	"SOLUSDT",
+	"MKRUSDT",
+	"SNXUSDT",
+	"CRVUSDT",
+	"POWRUSDT",
 	"BTCUSDT",
+	"BTCBUSD",
 	"ETHUSDT",
 	"BNBUSDT",
 	"XRPUSDT",
@@ -130,7 +144,6 @@ var TradeSymbolList = []string{
 	"EOSUSDT",
 	"AAVEUSDT",
 	"XTZUSDT",
-	"SOLUSDT",
 	"XMRUSDT",
 	"DASHUSDT",
 	"ATOMUSDT",
@@ -172,22 +185,23 @@ var TradeSymbolList = []string{
 	"NANOUSDT",
 	"IOTAUSDT",
 	"SXPUSDT",
-	// "CRVUSDT",
 	"CTSIUSDT",
 	"YFIIUSDT",
-	// "SNXUSDT",
 	"PAXUSDT",
 	"ZENUSDT",
 	"REEFUSDT",
 	"DODOUSDT",
-	// "MKRUSDT",
 	"MTLUSDT",
 	"CELRUSDT",
 	"BNBBUSD",
 }
 
+type SupportedPairs struct{
+	pairs map[names.Symbol] names.TradingPair
+}
+
 func GenerateTradeConfigs(symbols []string) []names.TradeConfig {
-	rand.Seed(time.Now().UnixNano())
+
 
 	tradeConfigs := make([]names.TradeConfig, 0)
 	for i := 0; i < len(TradeSymbolList); i++ {
