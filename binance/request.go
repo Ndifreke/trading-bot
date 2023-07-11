@@ -12,6 +12,7 @@ import (
 
 	// "time"
 	"trading/api"
+	"trading/helper"
 	"trading/utils"
 
 	"github.com/adshao/go-binance/v2"
@@ -53,7 +54,7 @@ func RequestChannel(chan int) {
 
 func GetSymbolPrices(symbols []string) (map[string]float64, error) {
 	var postRunPrices = make(map[string]float64)
-	prices, err := GetClient().NewListPricesService().Symbols(symbols).Do(context.Background())
+	prices, err := GetClient().NewListPricesService().Symbols(helper.TradeSymbolList).Do(context.Background())
 	if err != nil {
 		utils.LogError(err, "GetSymbolPrices()")
 		return nil, err

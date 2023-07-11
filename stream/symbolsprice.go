@@ -33,12 +33,22 @@ func readApiDataDispatch(s *Stream) {
 		}
 		for readerId, reader := range s.readers {
 			Price := symbols[readerId]
+			if readerId == BROADCAST_ID {
+				// Broadcast should be handled seperatedl
+				continue
+			}
 			func(reader func(StreamInterface, PriceStreamData), readerId string) {
 				data := PriceStreamData{Price, readerId}
-				// s.dataChan <- data
 				reader(s, data)
 			}(reader, readerId)
 
+		}
+		broadcaster, isBroadcast := s.readers[BROADCAST_ID]
+		if isBroadcast {
+			for readerId, Price := range symbols {
+				data := PriceStreamData{Price, readerId}
+				go broadcaster(s, data)
+			}
 		}
 		time.Sleep(1 * time.Second)
 	}
@@ -70,7 +80,6 @@ func NewAPIStream(symbols []string) StreamInterface {
 		readers:     make(map[string]ReaderFunc),
 	}
 }
-
 
 func (s *Stream) CloseLog(message string) {
 	closed := s.Close()

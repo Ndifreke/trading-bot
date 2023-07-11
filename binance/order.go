@@ -69,6 +69,6 @@ func CreateBuyMarketOrder(symbol names.Symbol, quantity float64) (*binance.Creat
 	return CreateOrder(symbol, quantity, names.TradeSideBuy, binance.OrderTypeMarket)
 }
 
-func CreateSellMarketOrder(symbol names.Symbol, price float64, quantity float64) (*binance.CreateOrderResponse, error) {
+func CreateSellMarketOrder(symbol names.Symbol, quantity float64) (*binance.CreateOrderResponse, error) {
 	return CreateOrder(symbol, quantity, names.TradeSideSell, binance.OrderTypeMarket)
 }

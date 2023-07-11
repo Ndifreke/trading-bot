@@ -65,8 +65,13 @@ type TradingPair struct {
 	Quote string
 }
 
+func (tp TradingPair)String()Symbol{
+	return Symbol(tp.Base + tp.Quote)
+}
+
 // ParseTradingPair parses a trading pair string into a TradingPair struct.
 func (s Symbol) ParseTradingPair() TradingPair {
+	//makes reference
 	return TradingPair{
 		Base:  string(s)[:3],
 		Quote: string(s)[3:],

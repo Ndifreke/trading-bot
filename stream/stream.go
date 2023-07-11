@@ -41,7 +41,7 @@ func GetPriceStreamer(symbols []string, useAPI bool) StreamInterface {
 
 type StreamManager struct {
 	streamer StreamInterface
-	symbols  []string
+	Symbols  []string
 }
 
 func (sm *StreamManager) copystream(factory func(symbols []string) StreamInterface, s StreamInterface) StreamInterface {
@@ -76,7 +76,11 @@ func (sm *StreamManager) GetStream() StreamInterface {
 }
 
 func (sm *StreamManager) NewStream(symbols []string) StreamInterface {
-	sm.streamer = GetPriceStreamer(symbols, !true)
+	sm.streamer = GetPriceStreamer(symbols, true)
 	sm.streamer.RegisterFailOver(sm.SwitchStream)
 	return sm.streamer
+}
+
+func (sm *StreamManager) StreamAll() StreamInterface {
+	return sm.NewStream(sm.Symbols)
 }

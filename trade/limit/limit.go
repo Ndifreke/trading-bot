@@ -25,7 +25,7 @@ type LimitTradeManager struct {
 
 func NewLimitTradeManager(tradeConfigs ...names.TradeConfig) names.Trader {
 	return &LimitTradeManager{
-		tradeConfigs: tradeConfigs,
+		tradeConfigs:  tradeConfigs,
 		streamManager: stream.StreamManager{},
 	}
 }
@@ -43,10 +43,8 @@ func isInvalidSide(side names.SideConfig) bool {
 }
 
 func (t *LimitTradeManager) Run() {
-
-	t.streamManager.NewStream(t.getTradeSymbols())
-
 	for _, tc := range t.tradeConfigs {
+
 		if tc.Side.IsBuy() {
 			if isInvalidSide(tc.Buy) {
 				utils.LogError(fmt.Errorf("invalid Side Configuration %s", spew.Sdump(tc.Buy)), "Buy Side Configuration Error")
@@ -59,19 +57,20 @@ func (t *LimitTradeManager) Run() {
 				continue
 			}
 		}
-		Watch(TradeRunner{
-			Config:    tc,
-			StreamMan: t.streamManager,
-			Locker:    t.tradeLocker,
-			Executor:  t.executorFunc,
+
+		go Watch(TradeRunner{
+			Config: tc,
+			Locker:   t.tradeLocker,
+			Executor: t.executorFunc,
 		})
+
 	}
 }
 
 func (t *LimitTradeManager) SetExecutor(executorFunc names.ExecutorFunc) names.Trader {
 	t.executorFunc = executorFunc
 	return t
-} 
+}
 
 func (t *LimitTradeManager) Done(confg names.TradeConfig) {
 	// todo decide if to close connection
@@ -84,8 +83,9 @@ func (t *LimitTradeManager) SetTradeLocker(tl names.TradeLockerInterface) names.
 
 func Watch(runner TradeRunner) {
 
-	config, lock, executor, streamMan := runner.Config, runner.Locker, runner.Executor, runner.StreamMan
-	streamer := streamMan.GetStream()
+	config, lock, executor := runner.Config, runner.Locker, runner.Executor
+
+	subscription := stream.Broadcaster.Subscribe(config.Symbol.String())
 	pretradePrice := binance.GetPriceLatest(config.Symbol.String())
 	configLocker := lock.AddLock(config, pretradePrice) //we mayy not need stop for sell
 
@@ -96,18 +96,14 @@ func Watch(runner TradeRunner) {
 			state.Price,
 			state.PretradePrice,
 			func() {
-				// Will interrupt other trades since they all use the
-				// same socket connection. This should be determined by
-				// the manager if to call done or not
-				streamer.Close()
+				stream.Broadcaster.Unsubscribe(state.TradeConfig.Symbol.String(), subscription)
 			},
 		)
 	})
 
-	reader := func(conn stream.StreamInterface, message stream.PriceStreamData) {
-		configLocker.TryLockPrice(message.Price)
+	for sub := range subscription {
+		configLocker.TryLockPrice(sub.Price)
 	}
-	streamer.RegisterReader(config.Symbol.String(), reader)
 
 }
 

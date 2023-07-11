@@ -4,6 +4,7 @@ import (
 	"trading/binance"
 	"trading/helper"
 	"trading/names"
+	"trading/user"
 	"trading/utils"
 )
 
@@ -35,10 +36,16 @@ func (exec *sellExecutor) IsProfitable() bool {
 
 func sell(st *sellExecutor) bool {
 	lastTradePrice := st.tradeStartPrice
+	quoteBalance := user.CreateUser().GetAccount().GetBalance( st.config.Symbol.ParseTradingPair().Base)
+	
+	quantity := st.config.Sell.Quantity
+	if quantity < 0 {
+		quantity = quoteBalance.Locked
+	}
+
 	sellOrder, err := binance.CreateSellMarketOrder(
 		st.config.Symbol,
-		st.marketPrice,
-		st.config.Sell.Quantity,
+		quantity,
 	)
 	if err != nil {
 		utils.LogError(err,"Error Selling")

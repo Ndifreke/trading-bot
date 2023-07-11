@@ -12,12 +12,11 @@ import (
 	// "trading/helper"
 	"sync"
 	"trading/names"
-	// "trading/stream"
 
-	"github.com/davecgh/go-spew/spew"
+	// "github.com/davecgh/go-spew/spew"
 	"github.com/joho/godotenv"
 
-	// "trading/binance"
+	// "trading/user"
 	detection "trading/trade/graph"
 	"trading/trade/manager"
 )
@@ -34,11 +33,13 @@ func init() {
 func sum(intChanx chan int) chan int {
 	intChan := make(chan int)
 	i := 0
-	go func(){ for {
-		i += 1
-		intChan <- i
-		time.Sleep(4 * time.Second)
-	}}()
+	go func() {
+		for {
+			i += 1
+			intChan <- i
+			time.Sleep(4 * time.Second)
+		}
+	}()
 	return intChan
 }
 
@@ -50,8 +51,8 @@ func waitAndPrint(intChan chan int) {
 }
 
 const (
-	numItems     = 100000000
-	numChunks    = 10
+	numItems      = 100000000
+	numChunks     = 10
 	itemsPerChunk = numItems / numChunks
 )
 
@@ -67,30 +68,30 @@ func processChunk(start int, wg *sync.WaitGroup) {
 func main() {
 
 	// Start the timer
-	start := time.Now()
+	// start := time.Now()
 
 	// Create a wait group to track goroutines
 	var wg sync.WaitGroup
 
 	// Process items in parallel
-	for i := 0; i < numChunks; i++ {
-		wg.Add(1)
-		go processChunk(i*itemsPerChunk, &wg)
-	}
+	// for i := 0; i < numChunks; i++ {
+	// 	wg.Add(1)
+	// 	go processChunk(i*itemsPerChunk, &wg)
+	// }
 
 	// Wait for all goroutines to finish
 	wg.Wait()
 
 	// Calculate the elapsed time
-	elapsed := time.Since(start)
+	// elapsed := time.Since(start)
 
 	// Print the result
-	fmt.Printf("Elapsed time: %s\n", elapsed)
+	// fmt.Printf("Elapsed time: %s\n", elapsed)
 
 	// intChan :=  sum(nil)
 
 	// go waitAndPrint(intChan)
-	
+
 	// var wg sync.WaitGroup
 
 	_ = wg
@@ -148,48 +149,84 @@ func main() {
 	unused(b, a)
 	v := a
 	g := detection.NewBinanceGraph(v.String(), "15m", 8)
-	fmt.Println(g.CalculateAveragePriceMovement(), "AVERAGE MOVEMENT")
-	// fmt.Println(g.GetHighLowPrice(), "HIGH LOW")
-	// fmt.Println(g.GetPriceMidpoint(), "MIDPOINT")
+
 	g.SaveToFile("")
 
-	fmt.Println(g.GetAveragePrice(), "Average")
-	spew.Dump(g.GetTrendPullForce())
-	// fmt.Println(g.GetPriceAvgDifference(), "aStep")
-
-	// s.ReadMessage(j)
-	// s.Connect()
-	// fmt.Println(d.GetAveragePrice())
-	// request.NewSocket("")
-	// net.Dial()
-
+	
 	config3 := names.TradeConfig{
-		Symbol: "BNBUSDT",
-		Side:   names.TradeSideSell,
-		IsCyclick: !true,
+		Symbol:    "BTCBUSD",
+		Side:      names.TradeSideBuy,
+		IsCyclick: true,
 		Sell: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,
 			RateLimit:  0.9,
 			LockDelta:  0.1,
-			Quantity: 0.54,
+			Quantity:   999999999999991,
 		},
 		Buy: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,
 			RateLimit:  0.5,
 			LockDelta:  0.1,
-			Quantity: 100,
+			Quantity:  -1,
+		},
+	}
+
+	config5 := names.TradeConfig{
+		Symbol:    "BNBUSDT",
+		Side:      names.TradeSideBuy,
+		IsCyclick: !true,
+		Buy: names.SideConfig{
+			MustProfit: true,
+			RateType:   names.RatePercent,
+			RateLimit:  10,
+			LockDelta:  10,
+			Quantity:   54,
+		},
+		Sell: names.SideConfig{
+			MustProfit: true,
+			RateType:   names.RatePercent,
+			RateLimit:  0.5,
+			LockDelta:  0.1,
+			Quantity:   100,
+		},
+	}
+
+	config4 := names.TradeConfig{
+		Symbol:    "BTCBUSD",
+		Side:      names.TradeSideBuy,
+		IsCyclick: !true,
+		Sell: names.SideConfig{
+			MustProfit: true,
+			RateType:   names.RatePercent,
+			RateLimit:  0.9,
+			LockDelta:  0.1,
+			Quantity:   0.54,
+		},
+		Buy: names.SideConfig{
+			MustProfit: true,
+			RateType:   names.RatePercent,
+			RateLimit:  0.5,
+			LockDelta:  0.1,
+			Quantity:   100,
 		},
 	}
 	_ = config2
+	_ = config4
+	_ = config5
 	_ = config
-	j := []names.TradeConfig{config3} //config
-	// pub := stream.NewPubSub(stream.StreamManager{})
+	// j := []names.TradeConfig{config4, config3, config5 } //config
+	j := []names.TradeConfig{config3}
 	wg.Add(1)
-	// limit.NewLimitTradeManager(j...).Run()
-	// tradeConfigs := helper.GenerateTradeConfigs(helper.TradeSymbolList)
+
+	// x := user.CreateUser().GetAccount().GetBalance("USDT")
+	// spew.Dump(x.Free)
 	manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
+	// manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
+	// manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
+	// manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
+	// manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
 	// manager.NewTradeManager(tradeConfigs...).SetGraphParam("15m", 18).DoTrade()
 	unused(j)
 	// unused(manager.NewTradeManager)
