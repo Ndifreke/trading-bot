@@ -2,7 +2,6 @@ package executor
 
 import (
 	"fmt"
-	"math"
 	"trading/helper"
 	"trading/names"
 	"trading/utils"
@@ -18,23 +17,10 @@ type ExecutorInterface interface {
 type executorType struct {
 	marketPrice     float64
 	tradeStartPrice float64
-	// extra  names.ExecutorExtraType
 	config names.TradeConfig
 	fees   helper.TradeFee
 }
 
-// quoteAmount the total amount that will be exchanged for the base asset
-// baseUnitPrice the price of one unit of base asset in quote value
-func getBuyQuote(quoteAmount, baseUnitPrice float64) float64 {
-	quantity := quoteAmount / baseUnitPrice
-	var decimalPlaces int
-	if baseUnitPrice != 0 {
-		decimalPlaces = int(math.Floor(math.Log10(math.Abs(baseUnitPrice))) + 1)
-	}
-	scale := math.Pow(10, float64(decimalPlaces))
-	truncated := math.Trunc(quantity*scale) / scale
-	return truncated
-}
 
 func summary(action names.TradeSide, symbol names.Symbol, marketPrice, tradeStartPrice, currentPrice, profit float64, fee helper.TradeFee, quantity float64, order binance.CreateOrderResponse) string {
 	_profit := symbol.FormatBasePrice(profit)

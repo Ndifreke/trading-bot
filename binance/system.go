@@ -6,12 +6,11 @@ import (
 	"github.com/adshao/go-binance/v2"
 )
 
-func GetBinanceAccount() *binance.Account {
-	s, err := GetClient().NewGetAccountService().Do(context.Background())
+func ExchangeInfo() *binance.ExchangeInfo {
+	data, err := GetClient().NewExchangeInfoService().Do(context.Background())
 	if err != nil {
 		utils.LogError(err, "ExchangeInfo()")
-		return s 
+		return nil
 	}
-	return s
+	return data
 }
-
