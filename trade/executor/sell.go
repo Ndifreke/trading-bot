@@ -1,6 +1,8 @@
 package executor
 
 import (
+	// "fmt"
+	"fmt"
 	"trading/binance"
 	"trading/helper"
 	"trading/names"
@@ -36,19 +38,19 @@ func (exec *sellExecutor) IsProfitable() bool {
 
 func sell(st *sellExecutor) bool {
 	lastTradePrice := st.tradeStartPrice
-	quoteBalance := user.CreateUser().GetAccount().GetBalance( st.config.Symbol.ParseTradingPair().Base)
-	
-	quantity := st.config.Sell.Quantity
-	if quantity < 0 {
-		quantity = quoteBalance.Locked
+	baseBalance := user.CreateUser().GetAccount().GetBalance(st.config.Symbol.ParseTradingPair().Base)
+
+	preciseQuantity := st.config.Sell.Quantity
+	if preciseQuantity < 0 {
+		preciseQuantity = names.GetSymbols().PreciseValue(st.config.Symbol.String(), baseBalance.Locked)
 	}
 
 	sellOrder, err := binance.CreateSellMarketOrder(
-		st.config.Symbol,
-		quantity,
+		st.config.Symbol.String(),
+		preciseQuantity,
 	)
 	if err != nil {
-		utils.LogError(err,"Error Selling")
+		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f", st.config.Symbol, preciseQuantity))
 		return false
 	}
 	summary(
@@ -73,5 +75,5 @@ func (exec *sellExecutor) Execute() bool {
 	// 	return false
 	// }
 	return sell(exec)
-	
+
 }

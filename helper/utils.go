@@ -5,7 +5,6 @@ import (
 	// "math"
 	// "math"
 	"math/rand"
-	"time"
 	"trading/names"
 )
 
@@ -119,6 +118,7 @@ var unused = []string{
 
 var TradeSymbolList = []string{
 	"ACAUSDT",
+	"FLMUSDT",
 	"SOLUSDT",
 	"MKRUSDT",
 	"SNXUSDT",
@@ -196,9 +196,9 @@ var TradeSymbolList = []string{
 	"BNBBUSD",
 }
 
-type SupportedPairs struct{
-	pairs map[names.Symbol] names.TradingPair
-}
+
+
+
 
 func GenerateTradeConfigs(symbols []string) []names.TradeConfig {
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"github.com/adshao/go-binance/v2"
-	"trading/names"
 	"trading/utils"
 )
 
@@ -54,21 +53,21 @@ func (o OrderHistory) Latest() Order {
 	return o[len(o)-1]
 }
 
-func CreateOrder(symbol names.Symbol, quantity float64, side names.TradeSide, orderType binance.OrderType) (*binance.CreateOrderResponse, error) {
+func CreateOrder(symbol string, quantity float64, side string, orderType binance.OrderType) (*binance.CreateOrderResponse, error) {
 	data, err := GetClient().
 		NewCreateOrderService().
-		Side(binance.SideType(side.String())).
-		Symbol(symbol.String()).
+		Side(binance.SideType(side)).
+		Symbol(symbol).
 		Quantity(strconv.FormatFloat(quantity, 'f', -1, 64)).
 		Type(orderType).
 		Do(context.Background())
 	return data, err
 }
 
-func CreateBuyMarketOrder(symbol names.Symbol, quantity float64) (*binance.CreateOrderResponse, error) {
-	return CreateOrder(symbol, quantity, names.TradeSideBuy, binance.OrderTypeMarket)
+func CreateBuyMarketOrder(symbol string, quantity float64) (*binance.CreateOrderResponse, error) {
+	return CreateOrder(symbol, quantity, "BUY", binance.OrderTypeMarket)
 }
 
-func CreateSellMarketOrder(symbol names.Symbol, quantity float64) (*binance.CreateOrderResponse, error) {
-	return CreateOrder(symbol, quantity, names.TradeSideSell, binance.OrderTypeMarket)
+func CreateSellMarketOrder(symbol string, quantity float64) (*binance.CreateOrderResponse, error) {
+	return CreateOrder(symbol, quantity, "SELL", binance.OrderTypeMarket)
 }

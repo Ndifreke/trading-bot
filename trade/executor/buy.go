@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"fmt"
 	"trading/binance"
 	"trading/helper"
 	"trading/names"
@@ -40,17 +41,19 @@ func buy(exec *buyExecutor) bool {
 
 	lastTradePrice := exec.tradeStartPrice
 	quoteBalance := user.CreateUser().GetAccount().GetBalance(exec.config.Symbol.ParseTradingPair().Quote)
-	quantity := exec.config.Sell.Quantity
+	preciseQuantity := exec.config.Sell.Quantity
 
-	if quantity < 0 {
-		quantity = getBuyQuote(quoteBalance.Locked, exec.marketPrice)
+	if preciseQuantity < 0 {
+		preciseQuantity = names.GetSymbols().PreciseValue(exec.config.Symbol.String(), quoteBalance.Locked/exec.marketPrice)
 	}
+
+	fmt.Println() 
 	buyOrder, err := binance.CreateBuyMarketOrder(
-		exec.config.Symbol,
-		quantity,
+		exec.config.Symbol.String(),
+		preciseQuantity,
 	)
 	if err != nil {
-		utils.LogError(err, "Error Buying")
+		utils.LogError(err, fmt.Sprintf("Error  Buying %s, Qty=%f", exec.config.Symbol, preciseQuantity))
 		return false
 	}
 	summary(

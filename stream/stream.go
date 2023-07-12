@@ -76,7 +76,7 @@ func (sm *StreamManager) GetStream() StreamInterface {
 }
 
 func (sm *StreamManager) NewStream(symbols []string) StreamInterface {
-	sm.streamer = GetPriceStreamer(symbols, true)
+	sm.streamer = GetPriceStreamer(symbols, !true)
 	sm.streamer.RegisterFailOver(sm.SwitchStream)
 	return sm.streamer
 }

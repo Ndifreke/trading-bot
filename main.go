@@ -129,7 +129,7 @@ func main() {
 		},
 		Symbol: "BTCUSDT",
 		Side:   names.TradeSideSell,
-		// IsCyclick: true,
+		// IsCyclick: true, 
 	}
 	config2 := names.TradeConfig{
 		Sell: names.SideConfig{
@@ -152,23 +152,23 @@ func main() {
 
 	g.SaveToFile("")
 
-	
+
 	config3 := names.TradeConfig{
-		Symbol:    "BTCBUSD",
+		Symbol:    "FLMUSDT",
 		Side:      names.TradeSideBuy,
-		IsCyclick: true,
+		IsCyclick: !true,
 		Sell: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,
-			RateLimit:  0.9,
-			LockDelta:  0.1,
-			Quantity:   999999999999991,
+			RateLimit:  2,
+			LockDelta:  0.4,
+			Quantity:   -1,
 		},
 		Buy: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,
-			RateLimit:  0.5,
-			LockDelta:  0.1,
+			RateLimit:  1.5,
+			LockDelta:  0.4,
 			Quantity:  -1,
 		},
 	}

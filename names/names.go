@@ -1,10 +1,5 @@
 package names
 
-import (
-	"fmt"
-	// "trading/stream"
-)
-
 const (
 	RatePercent   RateType  = "PERCENT"
 	RateFixed     RateType  = "FIXED"
@@ -58,41 +53,6 @@ type SideConfig struct {
 	Deviation SideConfigDeviation
 }
 
-type Symbol string
-
-type TradingPair struct {
-	Base  string
-	Quote string
-}
-
-func (tp TradingPair)String()Symbol{
-	return Symbol(tp.Base + tp.Quote)
-}
-
-// ParseTradingPair parses a trading pair string into a TradingPair struct.
-func (s Symbol) ParseTradingPair() TradingPair {
-	//makes reference
-	return TradingPair{
-		Base:  string(s)[:3],
-		Quote: string(s)[3:],
-	}
-}
-
-func (s Symbol) String() string {
-	return string(s)
-}
-
-// FormatBasePrice formats a price as a string with the base currency symbol.
-func (s Symbol) FormatBasePrice(price float64) string {
-	baseSymbol := s.ParseTradingPair().Base
-	return fmt.Sprintf("%f %s", price, baseSymbol)
-}
-
-// FormatQuotePrice formats a price as a string with the quote currency symbol.
-func (s Symbol) FormatQuotePrice(price float64) string {
-	quoteSymbol := s.ParseTradingPair().Quote
-	return fmt.Sprintf("%f %s", price, quoteSymbol)
-}
 
 type TradeConfig struct {
 	Sell          SideConfig
