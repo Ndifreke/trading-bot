@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net"
-	"time"
 
 	// "net/http"
 	"os"
@@ -28,42 +26,12 @@ const (
 
 func init() {
 	godotenv.Load()
+	names.GetSymbols()
 }
 
-func sum(intChanx chan int) chan int {
-	intChan := make(chan int)
-	i := 0
-	go func() {
-		for {
-			i += 1
-			intChan <- i
-			time.Sleep(4 * time.Second)
-		}
-	}()
-	return intChan
-}
 
-func waitAndPrint(intChan chan int) {
-	for {
-		v := <-intChan
-		fmt.Println(v)
-	}
-}
 
-const (
-	numItems      = 100000000
-	numChunks     = 10
-	itemsPerChunk = numItems / numChunks
-)
 
-func processChunk(start int, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for i := start; i < start+itemsPerChunk; i++ {
-
-		// Process each item in the chunk
-	}
-}
 
 func main() {
 
@@ -82,17 +50,6 @@ func main() {
 	// Wait for all goroutines to finish
 	wg.Wait()
 
-	// Calculate the elapsed time
-	// elapsed := time.Since(start)
-
-	// Print the result
-	// fmt.Printf("Elapsed time: %s\n", elapsed)
-
-	// intChan :=  sum(nil)
-
-	// go waitAndPrint(intChan)
-
-	// var wg sync.WaitGroup
 
 	_ = wg
 	// bn := binance.New[binance.PriceJson](args{
@@ -100,20 +57,7 @@ func main() {
 	// })
 	params := map[string]string{"symbol": "USDTAPT"}
 	_ = params
-	// r := bn.RequestWithQuery(params)
-	// fmt.Print(r.Body.Price)
-	// fmt.Print(binance.GetKLine("BTCBUSD","1m"))
-	// d := binance.NewGraph("BNBBUSD","15m")
-	// var j = func (conn *websocket.Conn, d request.MiniTickerData){
-	// 	fmt.Println(d.StreamName)
-	// 	// conn.Close()
-	// }
-	// s := request.PriceStream([]string{"cfxusdt","btcusdt"})
-	// o := binance.GetOrderHistories("PEPEUSDT").ListSell().Latest()
-
-	// fmt.Println(time.Unix(0, o.Time*int64(time.Millisecond)).Format(time.RFC1123), o.Side)
-	// d, _ := binance.CreateOrder("BTCUSDT", 9, 9, "MARKET", "BUY")
-	// unused(d)
+	
 	config := names.TradeConfig{
 		Sell: names.SideConfig{
 			RateLimit:  0,
@@ -155,8 +99,8 @@ func main() {
 
 	config3 := names.TradeConfig{
 		Symbol:    "FLMUSDT",
-		Side:      names.TradeSideBuy,
-		IsCyclick: !true,
+		Side:      names.TradeSideSell,
+		IsCyclick: true,
 		Sell: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,

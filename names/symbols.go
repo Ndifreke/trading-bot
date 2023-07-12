@@ -2,7 +2,6 @@ package names
 
 import (
 	"fmt"
-	// "math"
 	"strconv"
 	"strings"
 	"trading/binance"
@@ -74,18 +73,16 @@ func (smb Symbols) PreciseValue(symbol string, value float64) float64 {
 		}
 		return 0
 	}
-	var steps float64
+	var stepSize float64
 	for _, s := range smb.symbols {
 		if s.Symbol == symbol {
-			steps, _ = strconv.ParseFloat(s.Filters[1]["stepSize"].(string), 64)
+			stepSize, _ = strconv.ParseFloat(s.Filters[1]["stepSize"].(string), 64)
 			break 
 		}
 	}
-	decimalLimit := countDecimalPlaces(steps)
-	toPrecision := fmt.Sprintf("%.*f", countDecimalPlaces(steps), value)
+	// value - stepSize Dont sell exactly what is availble to reduce error caused by price shift
+	toPrecision := fmt.Sprintf("%.*f", countDecimalPlaces(stepSize), value - stepSize)
 	m, _ := strconv.ParseFloat(toPrecision, 64)
-	fmt.Println("DECIMAL LIMIT=", decimalLimit, "VALUE=", value)
-	// m - steps/2
 	return m
 } 
 

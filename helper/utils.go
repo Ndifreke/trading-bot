@@ -1,9 +1,10 @@
 package helper
 
 import (
+	"fmt"
+	"io/ioutil"
 	"math"
-	// "math"
-	// "math"
+	"os"
 	"math/rand"
 	"trading/names"
 )
@@ -244,4 +245,30 @@ func GenerateTradeConfigs(symbols []string) []names.TradeConfig {
 	}
 
 	return tradeConfigs
+}
+
+
+func WriteStringToFile(filePath, content string) error {
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening file: %w", err)
+	}
+	defer file.Close()
+
+	existingContent, err := ioutil.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("error reading file: %w", err)
+	}
+
+	contentToWrite := append([]byte(content), existingContent...)
+
+	if _, err := file.Seek(0, 0); err != nil {
+		return fmt.Errorf("error seeking file: %w", err)
+	}
+
+	if _, err := file.Write(contentToWrite); err != nil {
+		return fmt.Errorf("error writing file: %w", err)
+	}
+
+	return nil
 }

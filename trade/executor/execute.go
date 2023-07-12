@@ -2,6 +2,7 @@ package executor
 
 import (
 	"fmt"
+	"time"
 	"trading/helper"
 	"trading/names"
 	"trading/utils"
@@ -23,15 +24,7 @@ type executorType struct {
 
 
 func summary(action names.TradeSide, symbol names.Symbol, marketPrice, tradeStartPrice, currentPrice, profit float64, fee helper.TradeFee, quantity float64, order binance.CreateOrderResponse) string {
-	_profit := symbol.FormatBasePrice(profit)
-	_quantity := symbol.FormatBasePrice(float64(quantity))
-	_beforeTradePrice := symbol.FormatQuotePrice(tradeStartPrice)
-	_lastTradePrice := symbol.FormatQuotePrice(marketPrice)
-	_tradedPrice := symbol.FormatQuotePrice(currentPrice)
 
-	if action.IsBuy() {
-
-	}
 	sm := fmt.Sprintf(
 		`
 ===== %s TRADE SUMMARY =====
@@ -43,20 +36,22 @@ Ticker Price      : %s
 Profit            : %s
 Calculated fee    : %s
 Quantity          : %s
-ID                : %s
+ID                : %d
 Status            : %s
+Time              : %s
 `,
 		action.String(),
-		symbol.String(),
-		_lastTradePrice,
-		_beforeTradePrice,
+		order.Symbol,
+		symbol.FormatQuotePrice(marketPrice),
+		symbol.FormatQuotePrice(tradeStartPrice),
 		order.Price,
-		_tradedPrice,
-		_profit,
+		symbol.FormatQuotePrice(currentPrice),
+		symbol.FormatBasePrice(profit),
 		fee.String,
-		_quantity,
+		order.ExecutedQuantity,
 		order.OrderID,
 		order.Status,
+		time.Now().Format(time.UnixDate),
 	)
 	utils.LogInfo(sm)
 	return sm
