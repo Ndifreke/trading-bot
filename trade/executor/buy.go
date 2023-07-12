@@ -47,13 +47,12 @@ func buy(exec *buyExecutor) bool {
 		preciseQuantity = names.GetSymbols().PreciseValue(exec.config.Symbol.String(), quoteBalance.Locked/exec.marketPrice)
 	}
 
-	fmt.Println() 
 	buyOrder, err := binance.CreateBuyMarketOrder(
 		exec.config.Symbol.String(),
 		preciseQuantity,
 	)
 	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Error  Buying %s, Qty=%f", exec.config.Symbol, preciseQuantity))
+		utils.LogError(err, fmt.Sprintf("Error  Buying %s, Qty=%f Balance=%f", exec.config.Symbol, preciseQuantity, quoteBalance.Locked))
 		return false
 	}
 	summary(

@@ -50,7 +50,7 @@ func sell(st *sellExecutor) bool {
 		preciseQuantity,
 	)
 	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f", st.config.Symbol, preciseQuantity))
+		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, preciseQuantity,baseBalance.Locked))
 		return false
 	}
 	summary(

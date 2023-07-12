@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"trading/utils"
-
 	"github.com/adshao/go-binance/v2"
 )
 
@@ -47,13 +46,12 @@ func readSocketDataDispatch(s *Socket) {
 		readerId := s.getDataReaderId(data)
 		reader, isReader := s.readers[readerId]
 		publishReader, isPublisher := s.readers[BROADCAST_ID]
-
 		if isReader {
-			reader(s, data)
+			go reader(s, data)
 		}
 
 		if isPublisher {
-			publishReader(s, data)
+		go 	publishReader(s, data)
 		}
 	}
 
