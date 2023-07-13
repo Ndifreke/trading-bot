@@ -9,6 +9,7 @@ import (
 	"os"
 	// "trading/helper"
 	"sync"
+	"trading/binance"
 	"trading/names"
 
 	// "github.com/davecgh/go-spew/spew"
@@ -19,19 +20,10 @@ import (
 	"trading/trade/manager"
 )
 
-const (
-	SERVER = "localhost"
-	PORT   = "8080"
-)
-
 func init() {
 	godotenv.Load()
-	names.GetSymbols()
+	binance.LoadExchangeInfo()
 }
-
-
-
-
 
 func main() {
 
@@ -50,14 +42,13 @@ func main() {
 	// Wait for all goroutines to finish
 	wg.Wait()
 
-
 	_ = wg
 	// bn := binance.New[binance.PriceJson](args{
 	// 	Api: binance.Endpoints.PriceLatest,
 	// })
 	params := map[string]string{"symbol": "USDTAPT"}
 	_ = params
-	
+
 	config := names.TradeConfig{
 		Sell: names.SideConfig{
 			RateLimit:  0,
@@ -73,7 +64,7 @@ func main() {
 		},
 		Symbol: "BTCUSDT",
 		Side:   names.TradeSideSell,
-		// IsCyclick: true, 
+		// IsCyclick: true,
 	}
 	config2 := names.TradeConfig{
 		Sell: names.SideConfig{
@@ -96,9 +87,8 @@ func main() {
 
 	g.SaveToFile("")
 
-
 	config3 := names.TradeConfig{
-		Symbol:    "FLMUSDT",
+		Symbol:    "DIAUSDT",
 		Side:      names.TradeSideSell,
 		IsCyclick: true,
 		Sell: names.SideConfig{
@@ -111,9 +101,9 @@ func main() {
 		Buy: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,
-			RateLimit:  1.5,
+			RateLimit:  2,
 			LockDelta:  0.4,
-			Quantity:  -1,
+			Quantity:   -1,
 		},
 	}
 
