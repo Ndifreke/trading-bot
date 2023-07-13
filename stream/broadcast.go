@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"trading/helper"
+	"trading/names"
 )
 
 type broadcast struct {
@@ -87,4 +87,4 @@ func (ps *broadcast) publish(pubId string, message PriceStreamData) {
 	waitGroup.Wait()
 }
 
-var Broadcaster = NewBroadcast(StreamManager{Symbols: helper.TradeSymbolList})
+var Broadcaster = NewBroadcast(StreamManager{Symbols: names.GetSymbols().List()})

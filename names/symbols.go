@@ -41,23 +41,29 @@ func (s Symbol) FormatQuotePrice(price float64) string {
 	return fmt.Sprintf("%f %s", price, quoteSymbol)
 }
 
-type Symbols struct {
+type symbols struct {
 	symbols []binanceLib.Symbol
 }
 
-var exchangeInfo *binanceLib.ExchangeInfo
-func GetSymbols() Symbols {
-	return Symbols{
-		symbols: getExchangeInfo().Symbols,
-	}
-}
+// var exchangeInfo *binanceLib.ExchangeInfo
+// func GetSymbols() symbols {
+// 	return symbols{
+// 		symbols: getExchangeInfo().Symbols,
+// 	}
+// }
 
-func getExchangeInfo() *binanceLib.ExchangeInfo {
-	if exchangeInfo == nil {
-		exchangeInfo = binance.ExchangeInfo()
-		return exchangeInfo
+// func getExchangeInfo() *binanceLib.ExchangeInfo {
+// 	if exchangeInfo == nil {
+// 		exchangeInfo = binance.GetExchangeInfo2()
+// 		return exchangeInfo
+// 	}
+// 	return exchangeInfo
+// }
+
+func GetSymbols() symbols {
+	return symbols{
+		symbols: binance.LoadExchangeInfo().Symbols,
 	}
-	return exchangeInfo
 }
 
 type SymbolPrecision struct {
@@ -65,7 +71,7 @@ type SymbolPrecision struct {
 	Base  int
 }
 
-func (smb Symbols) PreciseValue(symbol string, value float64) float64 {
+func (smb symbols) PreciseValue(symbol string, value float64) float64 {
 	countDecimalPlaces := func(number float64) int {
 		parts := strings.Split(strconv.FormatFloat(number, 'f', -1, 64), ".")
 		if len(parts) > 1 {
@@ -77,16 +83,16 @@ func (smb Symbols) PreciseValue(symbol string, value float64) float64 {
 	for _, s := range smb.symbols {
 		if s.Symbol == symbol {
 			stepSize, _ = strconv.ParseFloat(s.Filters[1]["stepSize"].(string), 64)
-			break 
+			break
 		}
 	}
 	// value - stepSize Dont sell exactly what is availble to reduce error caused by price shift
-	toPrecision := fmt.Sprintf("%.*f", countDecimalPlaces(stepSize), value - stepSize)
+	toPrecision := fmt.Sprintf("%.*f", countDecimalPlaces(stepSize), value-stepSize)
 	m, _ := strconv.ParseFloat(toPrecision, 64)
 	return m
-} 
+}
 
-func (smb Symbols) ToPair(symbol string) TradingPair {
+func (smb symbols) ToPair(symbol string) TradingPair {
 	for _, s := range smb.symbols {
 		if s.Symbol == symbol {
 			return TradingPair{
@@ -96,4 +102,12 @@ func (smb Symbols) ToPair(symbol string) TradingPair {
 		}
 	}
 	return TradingPair{}
+}
+
+func (smb symbols) List() []string {
+	var list []string
+	for _, s := range smb.symbols {
+		list = append(list, s.Symbol)
+	}
+	return list
 }

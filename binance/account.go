@@ -7,9 +7,9 @@ import (
 )
 
 func GetBinanceAccount() *binance.Account {
-	s, err := GetClient().NewGetAccountService().Do(context.Background())
+	s, err := GetClient().NewGetAccountService().Do(context.Background(), binance.WithRecvWindow(60000))
 	if err != nil {
-		utils.LogError(err, "ExchangeInfo()")
+		utils.LogError(err, "GetBinanceAccount()")
 		return s 
 	}
 	return s
