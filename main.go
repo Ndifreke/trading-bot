@@ -1,13 +1,6 @@
 package main
 
 import (
-	"io"
-	"log"
-	"net"
-
-	// "net/http"
-	"os"
-	// "trading/helper"
 	"sync"
 	"trading/binance"
 	"trading/names"
@@ -16,8 +9,10 @@ import (
 	"github.com/joho/godotenv"
 
 	// "trading/user"
+	"trading/trade/auto"
+	bestside "trading/trade/bestbuy"
 	detection "trading/trade/graph"
-	"trading/trade/manager"
+	"trading/trade/limit"
 )
 
 func init() {
@@ -90,40 +85,20 @@ func main() {
 	config3 := names.TradeConfig{
 		Symbol:    "DIAUSDT",
 		Side:      names.TradeSideSell,
-		IsCyclick: true,
-		Sell: names.SideConfig{
-			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  2,
-			LockDelta:  0.4,
-			Quantity:   -1,
-		},
-		Buy: names.SideConfig{
-			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  2,
-			LockDelta:  0.4,
-			Quantity:   -1,
-		},
-	}
-
-	config5 := names.TradeConfig{
-		Symbol:    "BNBUSDT",
-		Side:      names.TradeSideBuy,
 		IsCyclick: !true,
-		Buy: names.SideConfig{
-			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  10,
-			LockDelta:  10,
-			Quantity:   54,
-		},
 		Sell: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,
-			RateLimit:  0.5,
-			LockDelta:  0.1,
-			Quantity:   100,
+			RateLimit:  2,
+			LockDelta:  0.4,
+			Quantity:   -1,
+		},
+		Buy: names.SideConfig{
+			MustProfit: true,
+			RateType:   names.RatePercent,
+			RateLimit:  2,
+			LockDelta:  0.4,
+			Quantity:   -1,
 		},
 	}
 
@@ -148,60 +123,44 @@ func main() {
 	}
 	_ = config2
 	_ = config4
-	_ = config5
 	_ = config
 	// j := []names.TradeConfig{config4, config3, config5 } //config
-	j := []names.TradeConfig{config3}
+
 	wg.Add(1)
 
-	// x := user.CreateUser().GetAccount().GetBalance("USDT")
-	// spew.Dump(x.Free)
-	manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
-	// manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
-	// manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
-	// manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
-	// manager.NewTradeManager(j...).UstradeTrend(detection.Limit).SetGraphParam("15m", 18).DoTrade()
-	// manager.NewTradeManager(tradeConfigs...).SetGraphParam("15m", 18).DoTrade()
+	autoConfig := names.TradeConfig{
+		Symbol:    "BNBUSDT",
+		Side:      names.TradeSideSell,
+		IsCyclick: !true,
+		Buy: names.SideConfig{
+			MustProfit: true,
+			RateType:   names.RatePercent,
+			RateLimit:  10,
+			LockDelta:  10,
+			Quantity:   -3,
+		},
+		Sell: names.SideConfig{
+			MustProfit: true,
+			RateType:   names.RatePercent,
+			RateLimit:  90.5,
+			LockDelta:  0.1,
+			Quantity:   100,
+		},
+	}
+	// auto.NewAutoTrade([]names.TradeConfig{autoConfig, config4}, 8, "15m").DoTrade()
+	bestConfigs := []names.TradeConfig{config3, config}
+
+	bestside.NewBestSideTrade(bestConfigs, 12, "15m", names.TradeSideSell, bestside.StatusContention, names.TradeConfig{}).DoTrade()
+	j := []names.TradeConfig{config3,config4,config2,config,autoConfig}
+	// limit.NewLimitTrade(j).DoTrade()
+	unused(bestConfigs)
+	unused(bestside.NewBestSideTrade)
 	unused(j)
-	// unused(manager.NewTradeManager)
+	unused(limit.NewLimitTrade)
+	unused(auto.NewAutoTrade)
+	unused(autoConfig)
 
 	wg.Wait()
-}
-
-// func receiver(ch chan int) {
-// 	time.Sleep(20 * time.Second)
-// 	ch <- 2
-// }
-
-// func connect() {
-
-// 	listener, err := net.Listen("tcp", SERVER+":"+PORT)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	for {
-// 		conn, err := listener.Accept()
-// 		if err != nil {
-// 			log.Fatal(err)
-// 			continue
-// 		}
-// 		go handleConnection(conn)
-// 	}
-// }
-
-func client() {
-	clientConn, err := net.Dial("tcp", "127.0.0.1:8080")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer clientConn.Close()
-	mustCopy(os.Stdout, clientConn)
-}
-
-func mustCopy(dst io.Writer, src io.Reader) {
-	if _, err := io.Copy(dst, src); err != nil {
-		log.Fatal(err)
-	}
 }
 
 func unused(v ...any) {
