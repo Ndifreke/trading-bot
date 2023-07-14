@@ -5,32 +5,28 @@ import (
 	"trading/binance"
 	"trading/names"
 	"trading/stream"
+	"trading/trade/manager"
 	"trading/utils"
+
 	"github.com/davecgh/go-spew/spew"
 )
 
-type TradeRunner struct {
-	Config    names.TradeConfig
-	StreamMan stream.StreamManager
-	Locker    names.TradeLockerInterface
-	Executor  names.ExecutorFunc
-}
 
-type LimitTradeManager struct {
+type limitTrader struct {
 	tradeConfigs  []names.TradeConfig
 	executorFunc  names.ExecutorFunc
 	tradeLocker   names.TradeLockerInterface
 	streamManager stream.StreamManager
 }
 
-func NewLimitTradeManager(tradeConfigs ...names.TradeConfig) names.Trader {
-	return &LimitTradeManager{
+func getLimitTrader(tradeConfigs []names.TradeConfig) names.Trader {
+	return &limitTrader{
 		tradeConfigs:  tradeConfigs,
 		streamManager: stream.StreamManager{},
 	}
 }
 
-func (t *LimitTradeManager) getTradeSymbols() []string {
+func (t *limitTrader) getTradeSymbols() []string {
 	var s []string
 	for _, tc := range t.tradeConfigs {
 		s = append(s, tc.Symbol.String())
@@ -42,7 +38,7 @@ func isInvalidSide(side names.SideConfig) bool {
 	return side.RateType == "" || side.Quantity == 0 || side.RateLimit == 0 || side.RateType == ""
 }
 
-func (t *LimitTradeManager) Run() {
+func (t *limitTrader) Run() {
 	for _, tc := range t.tradeConfigs {
 
 		if tc.Side.IsBuy() {
@@ -57,33 +53,48 @@ func (t *LimitTradeManager) Run() {
 				continue
 			}
 		}
-
-		go Watch(TradeRunner{
-			Config: tc,
-			Locker:   t.tradeLocker,
-			Executor: t.executorFunc,
-		})
-
+		go t.Watch(tc)
 	}
 }
 
-func (t *LimitTradeManager) SetExecutor(executorFunc names.ExecutorFunc) names.Trader {
+func (t *limitTrader) SetExecutor(executorFunc names.ExecutorFunc) names.Trader {
 	t.executorFunc = executorFunc
 	return t
 }
 
-func (t *LimitTradeManager) Done(confg names.TradeConfig) {
-	// todo decide if to close connection
+func (tm *limitTrader) Done(config names.TradeConfig) {
+	sideBeforeSwap := config.Side
+	if config.IsCyclick {
+		if config.Side.IsSell() {
+			// reverse the config
+			config.Side = names.TradeSideBuy
+		} else {
+			config.Side = names.TradeSideSell
+		}
+
+		for i, c := range tm.tradeConfigs {
+			if c.Symbol == config.Symbol && c.Side == sideBeforeSwap {
+				tm.tradeConfigs[i] = config
+				break
+			}
+		}
+		// tm.configs.replace(config)
+		//Reinitialise this trade again change sides if the
+		// trade is cyclic
+		NewLimitTrade(tm.tradeConfigs).
+			// SetGraphParam(tm.interval, tm.dataPointCount).
+			DoTrade()
+	}
 }
 
-func (t *LimitTradeManager) SetTradeLocker(tl names.TradeLockerInterface) names.Trader {
+func (t *limitTrader) SetTradeLocker(tl names.TradeLockerInterface) names.Trader {
 	t.tradeLocker = tl
 	return t
 }
 
-func Watch(runner TradeRunner) {
-
-	config, lock, executor := runner.Config, runner.Locker, runner.Executor
+func (t *limitTrader) Watch(config names.TradeConfig) {
+	executor := t.executorFunc
+	lock := t.tradeLocker
 
 	subscription := stream.Broadcaster.Subscribe(config.Symbol.String())
 	pretradePrice := binance.GetPriceLatest(config.Symbol.String())
@@ -97,6 +108,7 @@ func Watch(runner TradeRunner) {
 			state.PretradePrice,
 			func() {
 				stream.Broadcaster.Unsubscribe(state.TradeConfig.Symbol.String(), subscription)
+				t.Done(state.TradeConfig)
 			},
 		)
 	})
@@ -104,9 +116,14 @@ func Watch(runner TradeRunner) {
 	for sub := range subscription {
 		configLocker.TryLockPrice(sub.Price)
 	}
-
 }
 
-func (t *LimitTradeManager) SetStreamManager(sm stream.StreamManager) {
+func (t *limitTrader) SetStreamManager(sm stream.StreamManager) {
 	t.streamManager = sm
+}
+
+func NewLimitTrade(configs []names.TradeConfig) *manager.TradeManager {
+	// graphing will be done here
+	limitTrade := getLimitTrader(configs)
+	return manager.NewTradeManager(limitTrade)
 }

@@ -46,6 +46,9 @@ func readSocketDataDispatch(s *Socket) {
 		readerId := s.getDataReaderId(data)
 		reader, isReader := s.readers[readerId]
 		publishReader, isPublisher := s.readers[BROADCAST_ID]
+		if data.Symbol == "BTCUSDT" || data.Symbol == "DIAUSDT" || data.Symbol == "BTCBUSD" {
+			fmt.Println(data)
+		}
 		if isReader {
 			go reader(s, data)
 		}

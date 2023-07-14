@@ -66,19 +66,23 @@ func validateLock(config names.TradeConfig, initialPrice float64) {
 
 // AddLock adds a new lock to the trade locker.
 func (l *TradeLocker) AddLock(config names.TradeConfig, initialPrice float64) names.LockInterface {
-	l.writeLock.Lock()
-	defer l.writeLock.Unlock()
+	
+	
 
 	validateLock(config, initialPrice)
+
+
 	lock := Lock{price: initialPrice, tradeConfig: config, redemptionIsDue: false, pretradePrice: initialPrice, lockOwner: l, gainsAccrude: initialPrice}
+	
+	l.writeLock.Lock()
 	l.locks[config.Symbol] = &lock
+	l.writeLock.Unlock()
+
 	return &lock
 }
 
 // GetMostProfitableLock returns the most profitable lock for each trade side (buy and sell).
 func (locker *TradeLocker) GetMostProfitableLock() map[names.TradeSide]names.LockInterface {
-	locker.writeLock.Lock()
-	defer locker.writeLock.Unlock()
 
 	var trackedSellIncrease, trackedBuyIncrease float64
 	highest := make(map[names.TradeSide]names.LockInterface)
@@ -89,11 +93,17 @@ func (locker *TradeLocker) GetMostProfitableLock() map[names.TradeSide]names.Loc
 
 		if action.IsSell() && increase > trackedSellIncrease {
 			trackedSellIncrease = increase
+
+			locker.writeLock.Lock()
 			highest[lck.tradeConfig.Side] = lck
+			locker.writeLock.Unlock()
+
 		} else if action.IsBuy() && increase < trackedBuyIncrease {
 			//assumes buy low fix this
 			trackedBuyIncrease = increase
+			locker.writeLock.Lock()
 			highest[lck.tradeConfig.Side] = lck
+			locker.writeLock.Unlock()
 		}
 	}
 
@@ -203,7 +213,7 @@ func (lock *Lock) TryLockPrice(price float64) {
 		state.IsRedemptionCandidate,
 		lock.getMinimumLockUnit(),
 	)
-	utils.LogInfo(log)
+	utils.LogInfo(log )
 
 	if lock.redemptionDueCallback != nil && lock.IsRedemptionDue() {
 		lock.redemptionDueCallback(lock)
@@ -212,6 +222,7 @@ func (lock *Lock) TryLockPrice(price float64) {
 	if lock.redemptionCandidateCallback != nil && lock.IsRedemptionCandidate() {
 		lock.redemptionCandidateCallback(lock)
 	}
+
 
 }
 
