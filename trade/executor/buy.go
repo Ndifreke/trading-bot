@@ -43,7 +43,7 @@ func buy(exec *buyExecutor) bool {
 	quoteBalance := user.CreateUser().GetAccount().GetBalance(exec.config.Symbol.ParseTradingPair().Quote)
 	preciseQuantity := exec.config.Sell.Quantity
 
-	if preciseQuantity < 0 {
+	if preciseQuantity <= 0 {
 		preciseQuantity = names.GetSymbols().PreciseValue(exec.config.Symbol.String(), quoteBalance.Locked/exec.marketPrice)
 	}
 

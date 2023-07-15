@@ -73,13 +73,6 @@ func (ps *broadcast) Unsubscribe(id string, subscription chan PriceStreamData) {
 			}
 		}
 	}
-	// select {
-	// case _, ok := <-subscription:
-	// 	if ok {
-	// close(subscription)
-	// 	}
-	// default:
-	// }
 	ps.readerReport(ps.subscribers)
 }
 

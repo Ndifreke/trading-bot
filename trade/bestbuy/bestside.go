@@ -35,7 +35,7 @@ var StatusFullfilment status = "FULLFILMENT"
 type bestSideTrader struct {
 	tradeConfigs       []names.TradeConfig
 	executorFunc       names.ExecutorFunc
-	tradeLocker        names.TradeLockerInterface
+	tradeLocker        names.LockManagerInterface
 	streamManager      stream.StreamManager
 	interval           string //'15m'
 	datapoints         int    //18
@@ -99,24 +99,6 @@ func changeStatus(current status) status {
 	return StatusContention
 }
 
-func changeSide(current names.TradeSide) names.TradeSide {
-	if current == names.TradeSideBuy {
-		return names.TradeSideSell
-	}
-	return names.TradeSideBuy
-}
-
-func closeChannels(chs []chan stream.PriceStreamData) {
-	//stop all other channel
-	for _, c := range chs {
-		_, ok := <-c
-		if ok {
-			fmt.Println("OKAY CHAN")
-			close(c)
-		}
-	}
-}
-
 // TODO Rename to small letter done and remove from interface
 func (tm *bestSideTrader) Done(bestConfig names.TradeConfig) {
 
@@ -149,7 +131,7 @@ func (tm *bestSideTrader) Done(bestConfig names.TradeConfig) {
 	).DoTrade()
 }
 
-func (t *bestSideTrader) SetTradeLocker(tl names.TradeLockerInterface) names.Trader {
+func (t *bestSideTrader) SetLockManager(tl names.LockManagerInterface) names.Trader {
 	t.tradeLocker = tl
 	return t
 }
@@ -172,7 +154,7 @@ func (t *bestSideTrader) Watch(config names.TradeConfig) {
 			state.TradeConfig,
 			state.Price,
 			state.PretradePrice,
-			func() { 
+			func() {
 				stream.Broadcaster.UnsubscribeList(t.contentionChannels)
 				t.Done(state.TradeConfig)
 			},
@@ -193,12 +175,22 @@ func updateConfigs(configs []names.TradeConfig, bestSide names.TradeSide, bestCo
 		bestConfig.Side = bestSide
 	}
 	configsUpdate := []names.TradeConfig{}
-	contentionSide := changeSide(bestSide)
+	contentionSide := helper.SwitchTradeSide(bestSide)
 	for _, cfg := range configs {
 		cfg.Side = contentionSide
 		configsUpdate = append(configsUpdate, cfg)
 	}
 	return configsUpdate, bestConfig
+}
+
+func NewAutoBestSide(symbols []string, datapoints int, interval string, bestSide names.TradeSide, status status, bestSymbol string) *manager.TradeManager {
+	var emptyConfigs = []names.TradeConfig{}
+	for _, c := range symbols {
+		emptyConfigs = append(emptyConfigs, names.TradeConfig{
+			Symbol: names.Symbol(c),
+		})
+	}
+	return NewBestSideTrade(emptyConfigs, datapoints, interval, bestSide, status, names.TradeConfig{Symbol: names.Symbol(bestSymbol)})
 }
 
 // bestSide the side that the contention will fall to after the parallel side finds a candidate
@@ -255,12 +247,13 @@ func configureFromGraph(cfg names.TradeConfig, graph *graph.Graph) names.TradeCo
 	//price from midpoint of the trend to the highes reported gain price by graph
 	sellLimit := math.Max(entryPoints.GainHighPrice, (midpoint + priceAvgMovement))
 
-	percentFromMidPointToHighestGain := helper.GetPercentGrowth(sellLimit, midpoint)
+	percentFromMidPointToHighestGain := helper.GrowthPercent(sellLimit, midpoint)
 	sell.RateLimit = percentFromMidPointToHighestGain //pullpercentageOfMaxorMiN * mininmumAvagersteps IF BUll * 3 sell if Buy *2 buy
 	sell.RateType = names.RatePercent
 	sell.MustProfit = true
 
 	cfg.Sell = sell
+	cfg.Buy = sell
 
 	if true {
 		//if breakout or uptrend,

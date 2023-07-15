@@ -1,6 +1,7 @@
 package user
 
 import (
+	"os"
 	"strconv"
 	"trading/binance"
 )
@@ -10,8 +11,12 @@ type Account struct {
 }
 
 func GetAccount() *Account {
+	if os.Getenv("ENV") == "TEST" {
+		return getMockAccount()
+	}
+	
 	bals := map[string]Balance{}
-	 for _, b := range binance.GetBinanceAccount().Balances {
+	for _, b := range binance.GetBinanceAccount().Balances {
 		Locked, _ := strconv.ParseFloat(b.Locked, 64)
 		Free, _ := strconv.ParseFloat(b.Free, 64)
 		Asset := b.Asset

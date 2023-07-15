@@ -19,7 +19,7 @@ import (
 type autoTrader struct {
 	tradeConfigs  []names.TradeConfig
 	executorFunc  names.ExecutorFunc
-	tradeLocker   names.TradeLockerInterface
+	tradeLocker   names.LockManagerInterface
 	streamManager stream.StreamManager
 	interval      string //'15m'
 	datapoints    int    //18
@@ -95,7 +95,7 @@ func (tm *autoTrader) Done(config names.TradeConfig) {
 	}
 }
 
-func (t *autoTrader) SetTradeLocker(tl names.TradeLockerInterface) names.Trader {
+func (t *autoTrader) SetLockManager(tl names.LockManagerInterface) names.Trader {
 	t.tradeLocker = tl
 	return t
 }
@@ -177,7 +177,7 @@ func configureFromGraph(cfg names.TradeConfig, graph *graph.Graph) names.TradeCo
 	//price from midpoint of the trend to the highes reported gain price by graph
 	sellLimit := math.Max(entryPoints.GainHighPrice, (midpoint + priceAvgMovement))
 
-	percentFromMidPointToHighestGain := helper.GetPercentGrowth(sellLimit, midpoint)
+	percentFromMidPointToHighestGain := helper.GrowthPercent(sellLimit, midpoint)
 	sell.RateLimit = percentFromMidPointToHighestGain //pullpercentageOfMaxorMiN * mininmumAvagersteps IF BUll * 3 sell if Buy *2 buy
 	sell.RateType = names.RatePercent
 	sell.MustProfit = true

@@ -1,0 +1,21 @@
+{
+  "name": "trading-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "go test -v ./...",
+    "build": "go build -v ./...",
+    "dev":"./run.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ndifreke/trading-bot.git"
+  },
+  "author": "Ndifreke Ekim",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ndifreke/trading-bot/issues"
+  },
+  "homepage": "https://github.com/Ndifreke/trading-bot#readme"
+}

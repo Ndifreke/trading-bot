@@ -31,15 +31,9 @@ func (ta TradeSide) String() string {
 	return string(ta)
 }
 
-// func (ta TradeAction) GetLockDelta(cfg TradeConfig) string {
-// 	if ta.IsBuy(){
-
-// 	}
-// }
-
 type SideConfigDeviation struct {
-	Percent float64 //percent from pretrade price to initiate deviation action
-	SwitchSide bool // switch side when deviation condition is met
+	Percent    float64 //percent from pretrade price to initiate deviation action
+	SwitchSide bool    // switch side when deviation condition is met
 }
 type SideConfig struct {
 	// Determins the position where trade should be executed. Trade may not actually execute here for a number of reasons
@@ -52,7 +46,6 @@ type SideConfig struct {
 	LockDelta float64
 	Deviation SideConfigDeviation
 }
-
 
 type TradeConfig struct {
 	Sell          SideConfig
@@ -71,21 +64,30 @@ type LockState struct {
 	TradeConfig                 TradeConfig
 	IsRedemptionIsDue           bool
 	IsRedemptionCandidate       bool
-	LockOwner                   TradeLockerInterface
+	LockOwner                   LockManagerInterface
 	RedemptionDueCallback       func(LockInterface)
 	RedemptionCandidateCallback func(LockInterface)
+	MinimumLockUnit             float64
+	AbsoluteGrowth              float64
 }
 
 type LockInterface interface {
 	SetRedemptionCandidateCallback(func(LockInterface))
 	GetLockState() LockState
-	GetPercentIncrease() float64
+	AbsoluteGrowthPercent() float64
 	TryLockPrice(price float64)
+	TradeSide() TradeSide
+	IsRedemptionDue() bool
 }
 
-type TradeLockerInterface interface {
+// type LockCreatorFunc func(price float64, tradeConfig TradeConfig, redemptionIsMature bool, pretradePrice float64, lockManager  TradeLockManagerInterface, gainsAccrude float64) LockInterface
+type LockCreatorFunc func(price float64, tradeConfig TradeConfig, redemptionIsMature bool, pretradePrice float64, lockManager LockManagerInterface, gainsAccrude float64) LockInterface
+
+type LockManagerInterface interface {
 	AddLock(config TradeConfig, pretradePrice float64) LockInterface
-	GetMostProfitableLock() map[TradeSide]LockInterface
+	BestMatureLock() LockInterface
+	SetPrioritySide(prioritySide TradeSide)
+	SetLockCreator(LockCreatorFunc)
 }
 
 type ExecutorFunc = func(
@@ -99,8 +101,7 @@ type Trader interface {
 	Run()
 	Done(confg TradeConfig)
 	SetExecutor(tradeExecutor ExecutorFunc) Trader
-	SetTradeLocker(tradeLocker TradeLockerInterface) Trader
-	// SetStreamManager(sm stream.StreamManager)
+	SetLockManager(tradeLocker LockManagerInterface) Trader
 }
 
 type TradeManagerFunc func(t ...TradeConfig) *Trader

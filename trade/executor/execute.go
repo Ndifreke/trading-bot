@@ -54,5 +54,6 @@ Time              : %s
 		time.Now().Format(time.UnixDate),
 	)
 	utils.LogInfo(sm)
+	helper.WriteStringToFile("trades.txt",sm)
 	return sm
 }

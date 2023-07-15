@@ -2,7 +2,7 @@ package stream
 
 import (
 	"fmt"
-	"trading/helper"
+	"trading/constant"
 	"trading/utils"
 )
 
@@ -83,5 +83,5 @@ func (sm *StreamManager) NewStream(symbols []string) StreamInterface {
 }
 
 func (sm *StreamManager) StreamAll() StreamInterface {
-	return sm.NewStream(helper.SymbolList)
+	return sm.NewStream(constant.SymbolList)
 }
