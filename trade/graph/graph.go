@@ -235,7 +235,6 @@ func (graph *Graph) SaveToFile(filename string) error {
 	err = ioutil.WriteFile("./ui/src/dump/kline.json", data, 0644)
 	
 	if err != nil {
-		fmt.Println(err )
 		return err
 	}
 	return nil
@@ -363,7 +362,7 @@ func (graph *Graph) GetTrendPullForce() TrendPullForce {
 		BullPull:         Bulltrend,
 		BearPull:         Beartrend,
 		Sentiment:        Sentiment,
-		SentimentPercent: helper.GetPercentGrowth(max, min),
+		SentimentPercent: helper.GrowthPercent(max, min),
 	}
 }
 

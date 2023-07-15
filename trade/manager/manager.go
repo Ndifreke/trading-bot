@@ -2,26 +2,61 @@ package manager
 
 import (
 	// "time"
+	"fmt"
+	"trading/helper"
 	"trading/names"
 	"trading/trade/executor"
-
 	"trading/trade/locker"
+	"trading/utils"
 )
 
 type TradeManager struct {
-	trader names.Trader
+	trader       names.Trader
+	prioritySide names.TradeSide
+	lockCreator  names.LockCreatorFunc
 }
 
 func NewTradeManager(trader names.Trader) *TradeManager {
 	return &TradeManager{
-		trader: trader,
+		trader:       trader,
+		lockCreator:  locker.HighLockCreator,
+		prioritySide: names.TradeSideSell,
 	}
 }
 
+// set the prioritySide that should by the lock manager to decide which tradeside
+// to attempt to sell first when mature default names.TradeSideSell
+func (tm *TradeManager) UsePriority(prioritySide names.TradeSide) *TradeManager {
+	tm.prioritySide = prioritySide
+	return tm
+}
+
+// set the lock creator that should be used to create a locker by the lock manager default is locker.CreateYieldHighLock
+func (tm *TradeManager) UseLockCreator(lockCreator names.LockCreatorFunc) *TradeManager {
+	tm.lockCreator = lockCreator
+	return tm
+}
+
 func (tm *TradeManager) DoTrade() *TradeManager {
-	tradeLocker := locker.NewTradeLocker()
+
+	lockManager := locker.NewLockManager(tm.lockCreator)
+	if tm.prioritySide != "" {
+		if helper.SideIsValid(tm.prioritySide) {
+			utils.LogError(fmt.Errorf("invalid priority side"), string(tm.prioritySide))
+		}
+		lockManager.SetPrioritySide(tm.prioritySide)
+	}
+	utils.LogInfo(fmt.Sprintf(
+		"\n=== Trade Manager Summary === \n"+
+		"Lock creator      :%s\n\n"+
+		"Priority Side     :%s\n\n" +
+		"Trader            :%s\n\n",
+		tm.lockCreator,
+		tm.prioritySide,
+		tm.trader,
+		))
 	tm.trader.
-		SetTradeLocker(tradeLocker).
+		SetLockManager(lockManager).
 		SetExecutor(tm.Execute).
 		Run()
 	return tm
@@ -40,7 +75,7 @@ func (tm *TradeManager) Execute(
 		sold = executor.SellExecutor(config, marketPrice, basePrice).Execute()
 	}
 	if !sold {
-		// return
+		return
 	}
 	done()
 }

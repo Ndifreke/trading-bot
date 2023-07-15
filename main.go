@@ -150,9 +150,11 @@ func main() {
 	// auto.NewAutoTrade([]names.TradeConfig{autoConfig, config4}, 8, "15m").DoTrade()
 	bestConfigs := []names.TradeConfig{config3, config}
 
-	bestside.NewBestSideTrade(bestConfigs, 12, "15m", names.TradeSideSell, bestside.StatusContention, names.TradeConfig{}).DoTrade()
-	j := []names.TradeConfig{config3,config4,config2,config,autoConfig}
+	// bestside.NewBestSideTrade(bestConfigs, 12, "15m", names.TradeSideSell, bestside.StatusContention, names.TradeConfig{}).DoTrade()
+	j := []names.TradeConfig{config3, config4, config2, config, autoConfig}
 	// limit.NewLimitTrade(j).DoTrade()
+	autoBestConfig := []string{"BNBUSDT","XRPUSDT","SOLUSDT","TROYUSDT","ETHUSDT","BTCUSDT","SOLUSDT","AVAXUSDT"}
+	bestside.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, bestside.StatusContention, autoBestConfig[0]).DoTrade()
 	unused(bestConfigs)
 	unused(bestside.NewBestSideTrade)
 	unused(j)

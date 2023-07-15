@@ -11,11 +11,10 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-
 type limitTrader struct {
 	tradeConfigs  []names.TradeConfig
 	executorFunc  names.ExecutorFunc
-	tradeLocker   names.TradeLockerInterface
+	tradeLocker   names.LockManagerInterface
 	streamManager stream.StreamManager
 }
 
@@ -87,7 +86,7 @@ func (tm *limitTrader) Done(config names.TradeConfig) {
 	}
 }
 
-func (t *limitTrader) SetTradeLocker(tl names.TradeLockerInterface) names.Trader {
+func (t *limitTrader) SetLockManager(tl names.LockManagerInterface) names.Trader {
 	t.tradeLocker = tl
 	return t
 }

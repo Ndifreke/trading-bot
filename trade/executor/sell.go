@@ -41,7 +41,7 @@ func sell(st *sellExecutor) bool {
 	baseBalance := user.CreateUser().GetAccount().GetBalance(st.config.Symbol.ParseTradingPair().Base)
 
 	preciseQuantity := st.config.Sell.Quantity
-	if preciseQuantity < 0 {
+	if preciseQuantity <= 0 {
 		preciseQuantity = names.GetSymbols().PreciseValue(st.config.Symbol.String(), baseBalance.Locked)
 	}
 
