@@ -1,13 +1,14 @@
 package executor
 
 import (
-	// "fmt"
 	"fmt"
-	"trading/binance"
+	tradeBinance "trading/binance"
 	"trading/helper"
 	"trading/names"
 	"trading/user"
 	"trading/utils"
+
+	binance "github.com/adshao/go-binance/v2"
 )
 
 type sellExecutor executorType
@@ -45,13 +46,18 @@ func sell(st *sellExecutor) bool {
 		preciseQuantity = names.GetSymbols().PreciseValue(st.config.Symbol.String(), baseBalance.Locked)
 	}
 
-	sellOrder, err := binance.CreateSellMarketOrder(
-		st.config.Symbol.String(),
-		preciseQuantity,
-	)
-	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, preciseQuantity,baseBalance.Locked))
-		return false
+	sellOrder := &binance.CreateOrderResponse{}
+
+	if !utils.Env().IsTest() {
+		var err error
+		sellOrder, err = tradeBinance.CreateSellMarketOrder(
+			st.config.Symbol.String(),
+			preciseQuantity,
+		)
+		if err != nil {
+			utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, preciseQuantity, baseBalance.Locked))
+			return false
+		}
 	}
 	summary(
 		st.config.Side,

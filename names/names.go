@@ -32,7 +32,7 @@ func (ta TradeSide) String() string {
 }
 
 type SideConfigDeviation struct {
-	Percent    float64 //percent from pretrade price to initiate deviation action
+	Threshold  float64 //percent from pretrade price to initiate deviation action
 	SwitchSide bool    // switch side when deviation condition is met
 }
 type SideConfig struct {
@@ -75,9 +75,12 @@ type LockInterface interface {
 	SetRedemptionCandidateCallback(func(LockInterface))
 	GetLockState() LockState
 	AbsoluteGrowthPercent() float64
+	RelativeGrowthPercent() float64
 	TryLockPrice(price float64)
 	TradeSide() TradeSide
 	IsRedemptionDue() bool
+	GetLockManager() LockManagerInterface
+	RemoveFromManager() bool
 }
 
 // type LockCreatorFunc func(price float64, tradeConfig TradeConfig, redemptionIsMature bool, pretradePrice float64, lockManager  TradeLockManagerInterface, gainsAccrude float64) LockInterface
@@ -88,6 +91,8 @@ type LockManagerInterface interface {
 	BestMatureLock() LockInterface
 	SetPrioritySide(prioritySide TradeSide)
 	SetLockCreator(LockCreatorFunc)
+	RetrieveLock(config TradeConfig) LockInterface
+	RemoveLock(lock LockInterface) bool
 }
 
 type ExecutorFunc = func(
@@ -99,9 +104,11 @@ type ExecutorFunc = func(
 
 type Trader interface {
 	Run()
-	Done(confg TradeConfig)
+	Done(confg TradeConfig, locker LockInterface)
 	SetExecutor(tradeExecutor ExecutorFunc) Trader
 	SetLockManager(tradeLocker LockManagerInterface) Trader
+	AddConfig(confg TradeConfig)
+	RemoveConfig(config TradeConfig) bool
 }
 
 type TradeManagerFunc func(t ...TradeConfig) *Trader

@@ -68,4 +68,3 @@ func LogWarn(s string) {
 	createLog(name).Close()
 	log.Warn().Msg(s)
 }
-

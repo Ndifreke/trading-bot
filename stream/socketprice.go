@@ -3,38 +3,45 @@ package stream
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"trading/utils"
 	"github.com/adshao/go-binance/v2"
 )
 
 type Socket struct {
 	readers         map[string]ReaderFunc
-	getDataReaderId func(PriceStreamData) string
+	bulkReaders     map[string]ReaderFunc //Maybe we should change to array to avoid cuncurrency
+	getDataReaderId func(SymbolPriceData) string
 	symbols         []string
 	stopChannel     chan struct{}
 	doneChannel     chan struct{}
 	failHandler     func(StreamInterface)
 	streamIsClosed  bool
+	lock            sync.RWMutex
 }
 
 func NewSocketStream(symbols []string) StreamInterface {
+
 	return &Socket{
-		readers: make(map[string]ReaderFunc),
-		symbols: symbols,
-		getDataReaderId: func(data PriceStreamData) string {
+		lock:        sync.RWMutex{},
+		readers:     make(map[string]ReaderFunc),
+		symbols:     symbols,
+		bulkReaders: map[string]ReaderFunc{},
+		getDataReaderId: func(data SymbolPriceData) string {
 			return data.Symbol
 		},
 	}
 }
 
 func readSocketDataDispatch(s *Socket) {
-	if len(s.readers) < 1 {
-		s.CloseLog("No API data reader, will close connection")
+
+	if len(s.bulkReaders) == 0 {
+		utils.LogInfo("<Socket Stream>: No API data reader found")
 	}
 
 	errorHandler := func(err error) {
 		if s.failHandler != nil {
-			s.CloseLog("An Error happened will close and fail over")
+			s.CloseLog(fmt.Sprintf("<Socket Stream>: An Error happened will close and fail over %s", err.Error()))
 			s.failHandler(s)
 		}
 		s.CloseLog(err.Error())
@@ -42,17 +49,14 @@ func readSocketDataDispatch(s *Socket) {
 
 	messageHandler := func(event *binance.WsMarketStatEvent) {
 		price, _ := strconv.ParseFloat(event.LastPrice, 64)
-		data := PriceStreamData{Price: price, Symbol: event.Symbol}
-		readerId := s.getDataReaderId(data)
-		reader, isReader := s.readers[readerId]
-		publishReader, isPublisher := s.readers[BROADCAST_ID]
-		if isReader {
-			go reader(s, data)
-		}
+		data := SymbolPriceData{Price: price, Symbol: event.Symbol}
 
-		if isPublisher {
-		go 	publishReader(s, data)
-		}
+		go func(data SymbolPriceData) {
+			for _, bulkReader := range s.bulkReaders {
+				go bulkReader(s, data)
+			}
+		}(data)
+
 	}
 
 	donChannel, stopChannel, err := binance.WsCombinedMarketStatServe(
@@ -67,11 +71,28 @@ func readSocketDataDispatch(s *Socket) {
 	if err != nil {
 		errorHandler(err)
 	}
-
 }
 
-func (s *Socket) RegisterReader(symbol string, reader ReaderFunc) {
-	if len(s.readers) == 0 {
+func (s *Socket) RegisterBroadcast(key string, reader ReaderFunc) {
+	if len(s.readers) == 0 && len(s.bulkReaders) == 0 {
+		go readSocketDataDispatch(s)
+	}
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.bulkReaders[key] = reader
+}
+
+func (s *Socket) UnregisterBroadcast(id string) bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	_, exist := s.bulkReaders[id]
+	delete(s.bulkReaders, id)
+	return exist
+}
+
+func (s *Socket) RegisterLegacyReader(symbol string, reader ReaderFunc) {
+	if len(s.readers) == 0 && len(s.bulkReaders) == 0 {
 		//This is the first reader lets start the subscription
 		go readSocketDataDispatch(s)
 	}
@@ -87,9 +108,9 @@ func (s *Socket) Close() bool {
 
 func (s *Socket) CloseLog(message string) {
 	if s.streamIsClosed {
-		utils.LogInfo(fmt.Sprintf("%s: Connection Closed", message))
+		utils.LogInfo(fmt.Sprintf("<Socket Stream>: %s: Connection Closed", message))
 	} else {
-		utils.LogWarn(fmt.Sprintf("Connection is not Closed: `%s`", message))
+		utils.LogWarn(fmt.Sprintf("<Socket Stream>: Connection is not Closed: `%s`", message))
 	}
 }
 
@@ -99,9 +120,10 @@ func (s *Socket) IsClosed() bool {
 
 func (s *Socket) State() streamState {
 	return streamState{
-		Readers: s.readers,
-		Symbols: s.symbols,
-		Type:    StreamTypeSocket,
+		Readers:    s.readers,
+		BulkReader: s.bulkReaders,
+		Symbols:    s.symbols,
+		Type:       StreamTypeSocket,
 	}
 }
 

@@ -3,12 +3,13 @@ package stream
 import (
 	"fmt"
 	"trading/constant"
+	"trading/names"
 	"trading/utils"
 )
 
-type ReaderFunc func(stream StreamInterface, data PriceStreamData)
+type ReaderFunc func(stream StreamInterface, data SymbolPriceData)
 
-type PriceStreamData struct {
+type SymbolPriceData struct {
 	Price  float64
 	Symbol string
 }
@@ -17,7 +18,9 @@ type StreamInterface interface {
 	Close() bool
 	CloseLog(message string)
 	IsClosed() bool
-	RegisterReader(symbol string, reader ReaderFunc)
+	RegisterLegacyReader(symbol string, broadcasterFunc ReaderFunc)
+	RegisterBroadcast(readerId string, broadcasterFunc ReaderFunc)
+	UnregisterBroadcast(readerId string) bool
 	State() streamState
 	RegisterFailOver(func(failedStream StreamInterface))
 }
@@ -31,6 +34,7 @@ type streamState struct {
 	Readers map[string]ReaderFunc
 	Symbols []string
 	Type    StreamType
+	BulkReader map[string]ReaderFunc
 }
 
 func GetPriceStreamer(symbols []string, useAPI bool) StreamInterface {
@@ -50,7 +54,10 @@ func (sm *StreamManager) copystream(factory func(symbols []string) StreamInterfa
 	stream := factory(state.Symbols)
 	stream.RegisterFailOver(sm.SwitchStream)
 	for id, reader := range state.Readers {
-		stream.RegisterReader(id, reader)
+		stream.RegisterLegacyReader(id, reader)
+	}
+	for id, reader := range state.BulkReader {
+		stream.RegisterBroadcast(id, reader)
 	}
 	return stream
 }
@@ -72,7 +79,7 @@ func (sm *StreamManager) SwitchStream(failedStream StreamInterface) {
 }
 
 func (sm *StreamManager) GetStream() StreamInterface {
-	utils.LogInfo(fmt.Sprintf("Using Stream %s", sm.streamer.State().Type))
+	utils.LogInfo(fmt.Sprintf("Using Stream %s", " sm.streamer.State().Type"))
 	return sm.streamer
 }
 
@@ -85,3 +92,8 @@ func (sm *StreamManager) NewStream(symbols []string) StreamInterface {
 func (sm *StreamManager) StreamAll() StreamInterface {
 	return sm.NewStream(constant.SymbolList)
 }
+
+var Streamer = func() StreamInterface {
+	s := StreamManager{Symbols: names.GetSymbols().List()}
+	return s.StreamAll()
+}()

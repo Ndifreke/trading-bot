@@ -1,7 +1,6 @@
 package manager
 
 import (
-	// "time"
 	"fmt"
 	"trading/helper"
 	"trading/names"
@@ -41,20 +40,16 @@ func (tm *TradeManager) DoTrade() *TradeManager {
 
 	lockManager := locker.NewLockManager(tm.lockCreator)
 	if tm.prioritySide != "" {
-		if helper.SideIsValid(tm.prioritySide) {
+		if !helper.SideIsValid(tm.prioritySide) {
 			utils.LogError(fmt.Errorf("invalid priority side"), string(tm.prioritySide))
 		}
 		lockManager.SetPrioritySide(tm.prioritySide)
 	}
 	utils.LogInfo(fmt.Sprintf(
 		"\n=== Trade Manager Summary === \n"+
-		"Lock creator      :%s\n\n"+
-		"Priority Side     :%s\n\n" +
-		"Trader            :%s\n\n",
-		tm.lockCreator,
+			"Priority Side     :%s\n",
 		tm.prioritySide,
-		tm.trader,
-		))
+	))
 	tm.trader.
 		SetLockManager(lockManager).
 		SetExecutor(tm.Execute).

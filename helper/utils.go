@@ -9,6 +9,10 @@ import (
 	"trading/names"
 )
 
+func IsSameConfig(a, b  names.TradeConfig)bool{
+	return a.Side == b.Side && a.Symbol == b.Symbol
+}
+
 func SideIsValid(side names.TradeSide) bool{
 	return side == names.TradeSideSell || side == names.TradeSideBuy
 }
@@ -93,10 +97,7 @@ type TradeFee struct {
 func GetTradeFee(trade names.TradeConfig, currentPrice float64) TradeFee {
 	//TODO IMPLEMENT FOR BUY
 	quanity := trade.Sell.Quantity
-	// if trade.Action.IsBuy() {
-	// 	quanity = trade.Buy.Quantity
-	// }
-	// price := binance.GetPriceLatest(symbol).Body.Price
+	
 	fee := (float64(quanity) * currentPrice) * 0.001
 	return TradeFee{
 		Value:  fee,

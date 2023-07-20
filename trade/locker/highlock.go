@@ -33,6 +33,11 @@ var HighLockCreator = func(price float64, tradeConfig names.TradeConfig, redempt
 }
 
 // GetTradeLimit returns the stop loss limit for the lock.
+func (lock *highLock) RemoveFromManager() bool {
+	return lock.lockManager.RemoveLock(lock)
+}
+
+// GetTradeLimit returns the stop loss limit for the lock.
 func (lock *highLock) GetTradeLimit() float64 {
 	return helper.CalculateTradePrice(lock.tradeConfig, lock.pretradePrice).Limit
 }
@@ -73,7 +78,12 @@ func (lock *highLock) GetLockManager() names.LockManagerInterface {
 // AbsoluteGrowthPercent calculates the percentage by which the current price has deviated from the pre-trade price.
 // A positive value means the current locked price has gained.
 func (lock highLock) AbsoluteGrowthPercent() float64 {
-	return getAbsoluteChangePercent(lock.tradeConfig, lock.price, lock.pretradePrice)
+	percentChange := tradePricePercentChange(lock.tradeConfig, lock.price, lock.pretradePrice)
+	return math.Abs(percentChange)
+}
+
+func (lock highLock) RelativeGrowthPercent() float64 {
+	return tradePricePercentChange(lock.tradeConfig, lock.price, lock.pretradePrice)
 }
 
 // getMinimumLockUnit calculates the minimum amount that the current price
