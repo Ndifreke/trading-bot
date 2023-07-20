@@ -77,10 +77,6 @@ func (g *Graph) IsDowntrend() bool {
 	return midPoint <= downtrendCeiling && midPoint >= dipLowPrice
 }
 
-// func (g Graph) M() string {
-// 	return ""
-// }
-
 // GetAveragePrice + for up - for down starting from center
 func (g *Graph) GetAveragePrice() float64 {
 	kLineData := g.getKLineData()

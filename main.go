@@ -8,11 +8,9 @@ import (
 	// "github.com/davecgh/go-spew/spew"
 	"github.com/joho/godotenv"
 
-	// "trading/user"
-	"trading/trade/auto"
-	bestside "trading/trade/bestbuy"
-	detection "trading/trade/graph"
-	"trading/trade/limit"
+	"trading/trade/graph"
+	"trading/trade/traders"
+	
 )
 
 func init() {
@@ -79,7 +77,7 @@ func main() {
 	a, b := names.Symbol("BNBBUSD"), names.Symbol("BTCUSDT")
 	unused(b, a)
 	v := a
-	g := detection.NewBinanceGraph(v.String(), "15m", 8)
+	g := graph.NewBinanceGraph(v.String(), "15m", 8)
 
 	g.SaveToFile("")
 
@@ -168,15 +166,15 @@ IsCyclick:  true,
 	}
 	// y := []names.TradeConfig{config4}
 	// limit.NewLimitTrade(j).DoTrade()
-	limit.NewLimitTrade(x).DoTrade()
+	traders.NewLimitTrade(x).DoTrade()
 	autoBestConfig := []string{"BNBUSDT", "XRPUSDT", "SOLUSDT", "TROYUSDT", "ETHUSDT", "BTCUSDT", "SOLUSDT", "AVAXUSDT"}
 	// bestside.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, bestside.StatusContention, autoBestConfig[0]).DoTrade()
 	unused(bestConfigs)
 	unused(autoBestConfig)
-	unused(bestside.NewBestSideTrade)
+	unused(traders.NewBestSideTrade)
 	unused(j)
-	unused(limit.NewLimitTrade)
-	unused(auto.NewAutoTrade)
+	
+	unused(traders.NewAutoTrade)
 	unused(autoConfig)
 
 	wg.Wait()
