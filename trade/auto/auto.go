@@ -2,6 +2,7 @@ package auto
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"math"
 	"sync"
 	"trading/binance"
@@ -9,36 +10,31 @@ import (
 	"trading/kline"
 	"trading/names"
 	"trading/stream"
+	"trading/trade/deviation"
 	"trading/trade/graph"
 	"trading/trade/manager"
 	"trading/utils"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 type autoTrader struct {
-	tradeConfigs  []names.TradeConfig
-	executorFunc  names.ExecutorFunc
-	tradeLocker   names.LockManagerInterface
-	streamManager stream.StreamManager
-	interval      string //'15m'
-	datapoints    int    //18
-	trend         graph.TrendType
+	tradeConfigs             []names.TradeConfig
+	executorFunc             names.ExecutorFunc
+	tradeLockManager         names.LockManagerInterface
+	interval                 string //'15m'
+	datapoints               int    //18
+	trend                    graph.TrendType
+	broadcast                *stream.Broadcaster
+	refreshConfigsOnComplete bool
 }
 
 func getAutoTrader(tradeConfigs []names.TradeConfig) *autoTrader {
-	return &autoTrader{
-		tradeConfigs:  tradeConfigs,
-		streamManager: stream.StreamManager{},
+	trader := &autoTrader{
+		tradeConfigs:             tradeConfigs,
+		broadcast:                stream.NewBroadcast(uuid.New().String()),
+		refreshConfigsOnComplete: true,
 	}
-}
 
-func (t *autoTrader) getTradeSymbols() []string {
-	var s []string
-	for _, tc := range t.tradeConfigs {
-		s = append(s, tc.Symbol.String())
-	}
-	return s
+	return trader
 }
 
 func isInvalidSide(side names.SideConfig) bool {
@@ -50,13 +46,13 @@ func (t *autoTrader) Run() {
 
 		if tc.Side.IsBuy() {
 			if isInvalidSide(tc.Buy) {
-				utils.LogError(fmt.Errorf("invalid Side Configuration %s", spew.Sdump(tc.Buy)), "Buy Side Configuration Error")
+				utils.LogError(fmt.Errorf("invalid Side Configuration %s", helper.Stringify(tc.Buy)), "Buy Side Configuration Error")
 				continue
 			}
 
 		} else if tc.Side.IsSell() {
 			if isInvalidSide(tc.Sell) {
-				utils.LogError(fmt.Errorf("invalid Side Configuration %s", spew.Sdump(tc.Sell)), "Sell Side Configuration Error")
+				utils.LogError(fmt.Errorf("invalid Side Configuration %s", helper.Stringify(tc.Sell)), "Sell Side Configuration Error")
 				continue
 			}
 		}
@@ -69,44 +65,93 @@ func (t *autoTrader) SetExecutor(executorFunc names.ExecutorFunc) names.Trader {
 	return t
 }
 
+// Remove a config and it associated registeredLocks (subscription and lock)
+func (t *autoTrader) RemoveConfig(config names.TradeConfig) bool {
+	var removed bool
+	updatedConfigs := []names.TradeConfig{}
+	for _, tc := range t.tradeConfigs {
+		if tc == config {
+			removed = t.broadcast.Unsubscribe(config)
+		} else {
+			updatedConfigs = append(updatedConfigs, tc)
+		}
+	}
+	t.tradeConfigs = updatedConfigs
+	return removed
+}
+
+// Add a new config to start watching. If this config exist already
+// it will be replaced by the added config and the channel and lock assocated with
+// them will also be removed
+func (t *autoTrader) AddConfig(config names.TradeConfig) {
+	t.tradeConfigs = append(t.tradeConfigs, config)
+	go t.Watch(config)
+}
+
 func (tm *autoTrader) UstradeTrend(trend graph.TrendType) *autoTrader {
 	tm.trend = trend
 	return tm
 }
 
-func (tm *autoTrader) Done(config names.TradeConfig) {
-	sideBeforeSwap := config.Side
+func (tm *autoTrader) Done(config names.TradeConfig, locker names.LockInterface) {
+
 	if config.IsCyclick {
-		if config.Side.IsSell() {
-			// reverse the config
-			config.Side = names.TradeSideBuy
-		} else {
-			config.Side = names.TradeSideSell
+		if tm.refreshConfigsOnComplete {
+			for i, c := range tm.tradeConfigs {
+				if c == config {
+					//switch sides inline
+					tm.tradeConfigs[i].Side = helper.SwitchTradeSide(config.Side)
+				}
+			}
+			tm.broadcast.TerminateBroadCast()
+			fmt.Println("DESTROY OTHER CONFIGS")
+
+			// destroy other configs so they can get new price
+			// recreate the completed config with sides switched
+			go NewAutoTrade(tm.tradeConfigs, tm.datapoints, tm.interval).DoTrade()
+			return
 		}
 
-		for i, c := range tm.tradeConfigs {
-			if c.Symbol == config.Symbol && c.Side == sideBeforeSwap {
-				tm.tradeConfigs[i] = config
-				break
-			}
+		if tm.RemoveConfig(config) {
+			// Keeps other configs as they are and only
+			// recreate the completed config with sides switched
+			fmt.Println("KEEP OTHER CONFIGS")
+			updateConfig := config
+			updateConfig.Side = helper.SwitchTradeSide(config.Side)
+			tm.AddConfig(updateConfig)
 		}
-		NewAutoTrade(tm.tradeConfigs, tm.datapoints, tm.interval).
-			DoTrade()
+		return
+	}
+	tm.RemoveConfig(config)
+	if !tm.shouldKeepAlive() {
+		tm.broadcast.TerminateBroadCast()
 	}
 }
 
-func (t *autoTrader) SetLockManager(tl names.LockManagerInterface) names.Trader {
-	t.tradeLocker = tl
-	return t
+// should keep alive suggest if this trade broadcasr
+// manager should be terminated or not base on if there
+// is trade currently running if there is a configuration
+// that is cyclic, should keep alive should never terminate
+// this is a cuncurrency challenge.
+// should keep alive is only allowed to terminate when there
+// is no configuration that is cyclick and every other running
+// configuration has been completed
+func (tm *autoTrader) shouldKeepAlive() bool {
+	return len(tm.tradeConfigs) != 0
 }
 
-func (t *autoTrader) Watch(config names.TradeConfig) {
-	executor := t.executorFunc
-	lock := t.tradeLocker
+func (trader *autoTrader) SetLockManager(tl names.LockManagerInterface) names.Trader {
+	trader.tradeLockManager = tl
+	return trader
+}
 
-	subscription := stream.Broadcaster.Subscribe(config.Symbol.String())
+func (trader *autoTrader) Watch(config names.TradeConfig) {
+	executor := trader.executorFunc
+	lockManager := trader.tradeLockManager
+
+	subscription := trader.broadcast.Subscribe(config)
 	pretradePrice := binance.GetPriceLatest(config.Symbol.String())
-	configLocker := lock.AddLock(config, pretradePrice) //we mayy not need stop for sell
+	configLocker := lockManager.AddLock(config, pretradePrice) //we mayy not need stop for sell
 
 	configLocker.SetRedemptionCandidateCallback(func(l names.LockInterface) {
 		state := l.GetLockState()
@@ -115,19 +160,16 @@ func (t *autoTrader) Watch(config names.TradeConfig) {
 			state.Price,
 			state.PretradePrice,
 			func() {
-				stream.Broadcaster.Unsubscribe(state.TradeConfig.Symbol.String(), subscription)
-				t.Done(state.TradeConfig)
+				trader.Done(state.TradeConfig, configLocker)
 			},
 		)
 	})
 
-	for sub := range subscription {
+	deviationManager := deviation.NewDeviationManager(trader, configLocker)
+	for sub := range subscription.GetChannel() {
+		go deviationManager.CheckDeviation(&subscription)
 		configLocker.TryLockPrice(sub.Price)
 	}
-}
-
-func (t *autoTrader) SetStreamManager(sm stream.StreamManager) {
-	t.streamManager = sm
 }
 
 func NewAutoTrade(configs []names.TradeConfig, datapoints int, interval string) *manager.TradeManager {
@@ -191,3 +233,238 @@ func configureFromGraph(cfg names.TradeConfig, graph *graph.Graph) names.TradeCo
 	}
 	return cfg
 }
+
+// package auto
+
+// import (
+// 	"fmt"
+// 	"github.com/google/uuid"
+// 	"math"
+// 	"sync"
+// 	"trading/binance"
+// 	"trading/helper"
+// 	"trading/kline"
+// 	"trading/names"
+// 	"trading/stream"
+// 	"trading/trade/deviation"
+// 	"trading/trade/graph"
+// 	"trading/trade/manager"
+// 	"trading/utils"
+// )
+
+// type autoTrader struct {
+// 	tradeConfigs     []names.TradeConfig
+// 	executorFunc     names.ExecutorFunc
+// 	tradeLockManager names.LockManagerInterface
+// 	interval                 string //'15m'
+// 	datapoints               int    //18
+// 	trend                    graph.TrendType
+// 	broadcast                *stream.Broadcaster
+// 	refreshConfigsOnComplete bool
+// }
+
+// func getAutoTrader(tradeConfigs []names.TradeConfig) *autoTrader {
+// 	trader := &autoTrader{
+// 		tradeConfigs:             tradeConfigs,
+// 		broadcast:                stream.NewBroadcast(uuid.New().String()),
+// 		refreshConfigsOnComplete: true,
+// 	}
+
+// 	return trader
+// }
+
+// func isInvalidSide(side names.SideConfig) bool {
+// 	return false
+// }
+
+// func (t *autoTrader) Run() {
+// 	for _, tc := range t.tradeConfigs {
+
+// 		if tc.Side.IsBuy() {
+// 			if isInvalidSide(tc.Buy) {
+// 				utils.LogError(fmt.Errorf("invalid Side Configuration %s", helper.Stringify(tc.Buy)), "Buy Side Configuration Error")
+// 				continue
+// 			}
+
+// 		} else if tc.Side.IsSell() {
+// 			if isInvalidSide(tc.Sell) {
+// 				utils.LogError(fmt.Errorf("invalid Side Configuration %s", helper.Stringify(tc.Sell)), "Sell Side Configuration Error")
+// 				continue
+// 			}
+// 		}
+// 		go t.Watch(tc)
+// 	}
+// }
+
+// func (t *autoTrader) SetExecutor(executorFunc names.ExecutorFunc) names.Trader {
+// 	t.executorFunc = executorFunc
+// 	return t
+// }
+
+// // Remove a config and it associated registeredLocks (subscription and lock)
+// func (t *autoTrader) RemoveConfig(config names.TradeConfig) bool {
+// 	var removed bool
+// 	updatedConfigs := []names.TradeConfig{}
+// 	for _, tc := range t.tradeConfigs {
+// 		if tc != config {
+// 			updatedConfigs = append(updatedConfigs, tc)
+// 			removed = t.broadcast.Unsubscribe(config)
+// 		}
+// 	}
+// 	t.tradeConfigs = updatedConfigs
+// 	return removed
+// }
+
+// // Add a new config to start watching. If this config exist already
+// // it will be replaced by the added config and the channel and lock assocated with
+// // them will also be removed
+// func (t *autoTrader) AddConfig(config names.TradeConfig) {
+// 	t.tradeConfigs = append(t.tradeConfigs, config)
+// 	go t.Watch(config)
+// }
+
+// func (tm *autoTrader) UstradeTrend(trend graph.TrendType) *autoTrader {
+// 	tm.trend = trend
+// 	return tm
+// }
+
+// func (tm *autoTrader) Done(config names.TradeConfig, locker names.LockInterface) {
+
+// 	if config.IsCyclick {
+// 		if tm.refreshConfigsOnComplete {
+// 			for i, c := range tm.tradeConfigs {
+// 				if c == config {
+// 					//switch sides inline
+// 					tm.tradeConfigs[i].Side = helper.SwitchTradeSide(config.Side)
+// 				}
+// 			}
+// 			tm.broadcast.TerminateBroadCast()
+// 			fmt.Println("DESTROY OTHER CONFIGS")
+
+// 			// destroy other configs so they can get new price
+// 			// recreate the completed config with sides switched
+// 			go NewAutoTrade(tm.tradeConfigs, tm.datapoints, tm.interval).DoTrade()
+// 			return
+// 		}
+
+// 		if tm.RemoveConfig(config) {
+// 			// Keeps other configs as they are and only
+// 			// recreate the completed config with sides switched
+// 			fmt.Println("KEEP OTHER CONFIGS")
+// 			updateConfig := config
+// 			updateConfig.Side = helper.SwitchTradeSide(config.Side)
+// 			tm.AddConfig(updateConfig)
+// 		}
+// 		return
+// 	}
+// 	tm.RemoveConfig(config)
+// 	if !tm.shouldKeepAlive() {
+// 		tm.broadcast.TerminateBroadCast()
+// 	}
+// }
+
+// // should keep alive suggest if this trade broadcasr
+// // manager should be terminated or not base on if there
+// // is trade currently running if there is a configuration
+// // that is cyclic, should keep alive should never terminate
+// // this is a cuncurrency challenge.
+// // should keep alive is only allowed to terminate when there
+// // is no configuration that is cyclick and every other running
+// // configuration has been completed
+// func (tm *autoTrader) shouldKeepAlive() bool {
+// 	return len(tm.tradeConfigs) != 0
+// }
+
+// func (trader *autoTrader) SetLockManager(tl names.LockManagerInterface) names.Trader {
+// 	trader.tradeLockManager = tl
+// 	return trader
+// }
+
+// func (trader *autoTrader) Watch(config names.TradeConfig) {
+// 	executor := trader.executorFunc
+// 	lockManager := trader.tradeLockManager
+
+// 	subscription := trader.broadcast.Subscribe(config)
+// 	pretradePrice := binance.GetPriceLatest(config.Symbol.String())
+// 	configLocker := lockManager.AddLock(config, pretradePrice) //we mayy not need stop for sell
+
+// 	configLocker.SetRedemptionCandidateCallback(func(l names.LockInterface) {
+// 		state := l.GetLockState()
+// 		executor(
+// 			state.TradeConfig,
+// 			state.Price,
+// 			state.PretradePrice,
+// 			func() {
+// 				trader.Done(state.TradeConfig, configLocker)
+// 			},
+// 		)
+// 	})
+
+// 	deviationManager := deviation.NewDeviationManager(config, pretradePrice, configLocker, trader)
+// 	for sub := range subscription.GetChannel() {
+// 		go deviationManager.CheckDeviation(&subscription)
+// 		configLocker.TryLockPrice(sub.Price)
+// 	}
+// }
+
+// func NewAutoTrade(configs []names.TradeConfig, datapoints int, interval string) *manager.TradeManager {
+// 	preparedConfig := tradeConfigsAutoPrepare(configs, interval, datapoints)
+// 	autoTrader := getAutoTrader(preparedConfig)
+// 	autoTrader.datapoints = datapoints
+// 	autoTrader.interval = interval
+// 	return manager.NewTradeManager(autoTrader)
+// }
+
+// func tradeConfigsAutoPrepare(configs []names.TradeConfig, interval string, datapoints int) []names.TradeConfig {
+// 	wg := sync.WaitGroup{}
+// 	var mutex sync.Mutex
+// 	var preparedConfig []names.TradeConfig
+
+// 	wg.Add(len(configs))
+
+// 	for _, cfg := range configs {
+// 		go (func(cg names.TradeConfig) {
+// 			kLine := kline.NewKline(cg.Symbol.String(), interval, datapoints)
+// 			graph := graph.NewGraph(kLine)
+// 			config := configureFromGraph(cg, graph)
+// 			mutex.Lock() // Lock the mutex before appending to the slice
+// 			preparedConfig = append(preparedConfig, config)
+// 			mutex.Unlock() // Unlock the mutex after appending
+// 			wg.Done()
+
+// 		})(cfg)
+// 	}
+
+// 	wg.Wait()
+// 	return preparedConfig
+// }
+
+// func configureFromGraph(cfg names.TradeConfig, graph *graph.Graph) names.TradeConfig {
+
+// 	currentPrice := graph.Kline()[len(graph.Kline())-1].Close
+// 	midpoint := graph.GetPriceMidpoint()
+// 	priceAvgMovement := graph.CalculateAveragePriceMovement()
+// 	entryPoints := graph.FindAverageEntryPoints()
+
+// 	sell := cfg.Sell
+
+// 	// will lock profit everytime the price increases or decreases by priceAvgMovement
+
+// 	sell.LockDelta = helper.GetUnitPercentageOfPrice(currentPrice, priceAvgMovement)
+// 	//price from midpoint of the trend to the highes reported gain price by graph
+// 	sellLimit := math.Max(entryPoints.GainHighPrice, (midpoint + priceAvgMovement))
+
+// 	percentFromMidPointToHighestGain := helper.GrowthPercent(sellLimit, midpoint)
+// 	sell.RateLimit = percentFromMidPointToHighestGain //pullpercentageOfMaxorMiN * mininmumAvagersteps IF BUll * 3 sell if Buy *2 buy
+// 	sell.RateType = names.RatePercent
+// 	sell.MustProfit = true
+
+// 	cfg.Sell = sell
+
+// 	if true {
+// 		//if breakout or uptrend,
+// 		//lets reduce the buy stop limit so that we can always catch on the the upgrowth of the graph
+
+// 	}
+// 	return cfg
+// }

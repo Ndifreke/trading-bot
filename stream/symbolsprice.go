@@ -2,6 +2,7 @@ package stream
 
 import (
 	"fmt"
+	"sync"
 	"time"
 	"trading/binance"
 	"trading/utils"
@@ -12,12 +13,14 @@ type Stream struct {
 	readers     map[string]ReaderFunc
 	closeStream bool
 	failHandler func(StreamInterface)
+	bulkReaders map[string]ReaderFunc
+	lock        sync.RWMutex
 }
 
 func readApiDataDispatch(s *Stream) {
 
 	if len(s.readers) < 1 {
-		s.CloseLog("No socket data reader, will close connection")
+		utils.LogInfo("<API Stream>: No socket data reader")
 	}
 	for {
 		if s.IsClosed() {
@@ -27,7 +30,7 @@ func readApiDataDispatch(s *Stream) {
 		symbols, err := binance.GetSymbolPrices(s.symbols)
 
 		if err != nil && s.failHandler != nil {
-			s.CloseLog("An Error happened will close and fail over")
+			s.CloseLog(fmt.Sprintf("<API Stream>: An Error happened will close and fail over: %s", err.Error()))
 			s.failHandler(s)
 			break
 		}
@@ -37,19 +40,21 @@ func readApiDataDispatch(s *Stream) {
 				// Broadcast should be handled seperatedl
 				continue
 			}
-			func(reader func(StreamInterface, PriceStreamData), readerId string) {
-				data := PriceStreamData{Price, readerId}
+			func(reader func(StreamInterface, SymbolPriceData), readerId string) {
+				data := SymbolPriceData{Price, readerId}
 				reader(s, data)
 			}(reader, readerId)
 
 		}
-		broadcaster, isBroadcast := s.readers[BROADCAST_ID]
-		if isBroadcast {
+		go func(symbols map[string]float64) {
 			for readerId, Price := range symbols {
-				data := PriceStreamData{Price, readerId}
-				go broadcaster(s, data)
+				for _, bulkReader := range s.bulkReaders {
+					data := SymbolPriceData{Price, readerId}
+					go bulkReader(s, data)
+				}
 			}
-		}
+		}(symbols)
+
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -63,7 +68,7 @@ func (s *Stream) IsClosed() bool {
 	return s.closeStream
 }
 
-func (s *Stream) RegisterReader(id string, reader ReaderFunc) {
+func (s *Stream) RegisterLegacyReader(id string, reader ReaderFunc) {
 	if len(s.readers) == 0 {
 		s.readers[id] = reader
 		//start dispatching immediately a reader is added
@@ -78,16 +83,35 @@ func NewAPIStream(symbols []string) StreamInterface {
 		closeStream: false,
 		symbols:     symbols,
 		readers:     make(map[string]ReaderFunc),
+		bulkReaders: map[string]ReaderFunc{},
+		lock:        sync.RWMutex{},
 	}
 }
 
 func (s *Stream) CloseLog(message string) {
 	closed := s.Close()
 	if closed {
-		utils.LogInfo(fmt.Sprintf("%s: Connection Closed", message))
+		utils.LogInfo(fmt.Sprintf("<API Stream>: %s: Connection Closed", message))
 	} else {
-		utils.LogWarn(fmt.Sprintf("Connection is not Closed: `%s`", message))
+		utils.LogWarn(fmt.Sprintf("<API Stream>: Connection is not Closed: `%s`", message))
 	}
+}
+
+func (s *Stream) RegisterBroadcast(readerId string, reader ReaderFunc) {
+	if len(s.readers) == 0 && len(s.bulkReaders) == 0 {
+		go readApiDataDispatch(s)
+	}
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.bulkReaders[readerId] = reader
+}
+
+func (s *Stream) UnregisterBroadcast(readerId string) bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	_, exist := s.bulkReaders[readerId]
+	delete(s.bulkReaders, readerId)
+	return exist
 }
 
 func (s *Stream) State() streamState {
@@ -95,6 +119,7 @@ func (s *Stream) State() streamState {
 		Readers: s.readers,
 		Symbols: s.symbols,
 		Type:    StreamTypeAPI,
+		BulkReader: s.bulkReaders,
 	}
 }
 

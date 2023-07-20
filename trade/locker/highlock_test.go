@@ -281,3 +281,46 @@ func TestTradeLockerPriority(t *testing.T) {
 	sellTwo.TryLockPrice(199)
 	assert.True(t, sellTwo.IsRedemptionCandidate(), "should be the redemption candidate in absense of priority side")
 }
+
+func TestTradeLockerGrowth(t *testing.T) {
+
+	buy := names.TradeConfig{
+		Symbol: "ETHUSDC",
+		Side:   names.TradeSideBuy,
+		Buy: names.SideConfig{
+			RateLimit: 50,
+			RateType:  names.RateFixed,
+			Quantity:  2,
+			LockDelta: 1,
+		},
+	}
+
+	tradeLockManager := NewLockManager(HighLockCreator)
+	buyConfig := tradeLockManager.AddLock(buy, 100).(*highLock)
+	buyConfig.TryLockPrice(91)
+	assert.EqualValues(t, buyConfig.RelativeGrowthPercent(), -9,"")
+	buyConfig.TryLockPrice(109)
+	assert.EqualValues(t, buyConfig.RelativeGrowthPercent(), 9,"")
+
+
+
+	sell := names.TradeConfig{
+		Symbol: "ETHUSDC",
+		Side:   names.TradeSideSell,
+		Sell: names.SideConfig{
+			RateLimit: 101,
+			RateType:  names.RateFixed,
+			Quantity:  2,
+			LockDelta: 1,
+		},
+	}
+
+	sellLockManager := NewLockManager(HighLockCreator)
+	sellConfig := sellLockManager.AddLock(sell, 100).(*highLock)
+
+	sellConfig.TryLockPrice(120)
+	assert.EqualValues(t, sellConfig.RelativeGrowthPercent(), 20,"")
+	sellConfig.TryLockPrice(80)
+	assert.EqualValues(t, sellConfig.RelativeGrowthPercent(), -20,"")
+}
+

@@ -30,6 +30,9 @@ func GetPriceAverage(symbol string) api.RequestResponse[PriceJson] {
 }
 
 func GetPriceLatest(symbol string) float64 {
+	if utils.Env().IsTest() {
+		return 10
+	}
 	price, error := GetClient().NewListPricesService().Symbol(symbol).Do(context.Background())
 	if error != nil {
 		utils.LogError(error, "Get Price Latest %s")

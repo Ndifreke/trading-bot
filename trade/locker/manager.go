@@ -2,14 +2,11 @@ package locker
 
 import (
 	"fmt"
-	"math"
 	"sync"
 	"trading/helper"
 	"trading/names"
 	"trading/utils"
 )
-
-// type LockCreatorFunc func(price float64, tradeConfig names.TradeConfig, redemptionIsMature bool, pretradePrice float64, lockManager *LockManager, gainsAccrude float64) names.LockInterface
 
 // LockManager represents a collection of trade locks.
 type LockManager struct {
@@ -32,6 +29,25 @@ func NewLockManager(lockCreator names.LockCreatorFunc) names.LockManagerInterfac
 // the lock creator must return a pointer to that lock
 func (m *LockManager) SetPrioritySide(prioritySide names.TradeSide) {
 	m.prioritySide = prioritySide
+}
+
+func (m *LockManager) RetrieveLock(config names.TradeConfig) names.LockInterface {
+	return m.locks[config.Symbol]
+}
+
+// Remove this lock from the manager
+func (m *LockManager) RemoveLock(lock names.LockInterface) bool {
+	var exist bool
+	for _, l := range m.locks {
+		if l == lock  {
+			exist = true
+			break
+		}
+	}
+	if exist {
+		delete(m.locks, lock.GetLockState().TradeConfig.Symbol)
+	}
+	return exist
 }
 
 // Set the function that will be used to create a new kind of lock
@@ -132,8 +148,8 @@ func (l *LockManager) AddLock(config names.TradeConfig, initialPrice float64) na
 	return newLock
 }
 
-func getAbsoluteChangePercent(config names.TradeConfig, price, pretradePrice float64) float64 {
-	return math.Abs(helper.GrowthPercent(price, pretradePrice))
+func tradePricePercentChange(config names.TradeConfig, price, pretradePrice float64) float64 {
+	return helper.GrowthPercent(price, pretradePrice)
 }
 
 func logLock(lock names.LockInterface) {

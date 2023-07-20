@@ -2,11 +2,13 @@ package executor
 
 import (
 	"fmt"
-	"trading/binance"
+	tradeBinance "trading/binance"
 	"trading/helper"
 	"trading/names"
 	"trading/user"
 	"trading/utils"
+
+	binance "github.com/adshao/go-binance/v2"
 )
 
 type buyExecutor executorType
@@ -47,14 +49,20 @@ func buy(exec *buyExecutor) bool {
 		preciseQuantity = names.GetSymbols().PreciseValue(exec.config.Symbol.String(), quoteBalance.Locked/exec.marketPrice)
 	}
 
-	buyOrder, err := binance.CreateBuyMarketOrder(
-		exec.config.Symbol.String(),
-		preciseQuantity,
-	)
-	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Error  Buying %s, Qty=%f Balance=%f", exec.config.Symbol, preciseQuantity, quoteBalance.Locked))
-		return false
+	buyOrder := &binance.CreateOrderResponse{}
+
+	if !utils.Env().IsTest() {
+		var err error
+		buyOrder, err = tradeBinance.CreateBuyMarketOrder(
+			exec.config.Symbol.String(),
+			preciseQuantity,
+		)
+		if err != nil {
+			utils.LogError(err, fmt.Sprintf("Error  Buying %s, Qty=%f Balance=%f", exec.config.Symbol, preciseQuantity, quoteBalance.Locked))
+			return false
+		}
 	}
+	fmt.Println(buyOrder)
 	summary(
 		exec.config.Side,
 		exec.config.Symbol,

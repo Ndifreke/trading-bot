@@ -37,7 +37,6 @@ func main() {
 	// Wait for all goroutines to finish
 	wg.Wait()
 
-	_ = wg
 	// bn := binance.New[binance.PriceJson](args{
 	// 	Api: binance.Endpoints.PriceLatest,
 	// })
@@ -45,6 +44,8 @@ func main() {
 	_ = params
 
 	config := names.TradeConfig{
+		IsCyclick: true,
+
 		Sell: names.SideConfig{
 			RateLimit:  0,
 			RateType:   names.RatePercent,
@@ -83,15 +84,19 @@ func main() {
 	g.SaveToFile("")
 
 	config3 := names.TradeConfig{
-		Symbol:    "DIAUSDT",
+		Symbol:   "DIAUSDT",
 		Side:      names.TradeSideSell,
-		IsCyclick: !true,
+		IsCyclick: true,
 		Sell: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,
 			RateLimit:  2,
 			LockDelta:  0.4,
 			Quantity:   -1,
+			Deviation: names.SideConfigDeviation{
+				SwitchSide: true,
+				Threshold:  0.00034,
+			},
 		},
 		Buy: names.SideConfig{
 			MustProfit: true,
@@ -99,13 +104,18 @@ func main() {
 			RateLimit:  2,
 			LockDelta:  0.4,
 			Quantity:   -1,
+			Deviation: names.SideConfigDeviation{
+				SwitchSide: true,
+				Threshold:  0.00034,
+			},
 		},
 	}
 
 	config4 := names.TradeConfig{
+IsCyclick:  true,
+
 		Symbol:    "BTCBUSD",
 		Side:      names.TradeSideBuy,
-		IsCyclick: !true,
 		Sell: names.SideConfig{
 			MustProfit: true,
 			RateType:   names.RatePercent,
@@ -150,12 +160,19 @@ func main() {
 	// auto.NewAutoTrade([]names.TradeConfig{autoConfig, config4}, 8, "15m").DoTrade()
 	bestConfigs := []names.TradeConfig{config3, config}
 
-	// bestside.NewBestSideTrade(bestConfigs, 12, "15m", names.TradeSideSell, bestside.StatusContention, names.TradeConfig{}).DoTrade()
-	j := []names.TradeConfig{config3, config4, config2, config, autoConfig}
+	//  bestside.NewBestSideTrade(bestConfigs, 12, "15m", names.TradeSideSell, bestside.StatusContention, names.TradeConfig{}).DoTrade()
+	j := []names.TradeConfig{config3, config4, config2, autoConfig}
+	x := []names.TradeConfig{
+		// config3,
+		config4,
+	}
+	// y := []names.TradeConfig{config4}
 	// limit.NewLimitTrade(j).DoTrade()
-	autoBestConfig := []string{"BNBUSDT","XRPUSDT","SOLUSDT","TROYUSDT","ETHUSDT","BTCUSDT","SOLUSDT","AVAXUSDT"}
-	bestside.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, bestside.StatusContention, autoBestConfig[0]).DoTrade()
+	limit.NewLimitTrade(x).DoTrade()
+	autoBestConfig := []string{"BNBUSDT", "XRPUSDT", "SOLUSDT", "TROYUSDT", "ETHUSDT", "BTCUSDT", "SOLUSDT", "AVAXUSDT"}
+	// bestside.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, bestside.StatusContention, autoBestConfig[0]).DoTrade()
 	unused(bestConfigs)
+	unused(autoBestConfig)
 	unused(bestside.NewBestSideTrade)
 	unused(j)
 	unused(limit.NewLimitTrade)

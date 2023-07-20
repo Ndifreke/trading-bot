@@ -38,6 +38,11 @@ func (lock *unbiaseLock) GetTradeLimit() float64 {
 	return helper.CalculateTradePrice(lock.tradeConfig, lock.pretradePrice).Limit
 }
 
+// GetTradeLimit returns the stop loss limit for the lock.
+func (lock *unbiaseLock) RemoveFromManager() bool {
+	return lock.lockManager.RemoveLock(lock)
+}
+
 // PretradePrice returns the pre-trade price for the lock.
 func (lock *unbiaseLock) PretradePrice() float64 {
 	return lock.pretradePrice
@@ -74,7 +79,11 @@ func (lock *unbiaseLock) GetLockManager() names.LockManagerInterface {
 // AbsoluteGrowthPercent calculates the percentage by which the current price has deviated from the pre-trade price.
 // A positive value means the current locked price has gained.
 func (lock unbiaseLock) AbsoluteGrowthPercent() float64 {
-	return getAbsoluteChangePercent(lock.tradeConfig, lock.price, lock.pretradePrice)
+	percentChange := tradePricePercentChange(lock.tradeConfig, lock.price, lock.pretradePrice)
+	return math.Abs(percentChange)
+}
+func (lock unbiaseLock) RelativeGrowthPercent() float64 {
+	return tradePricePercentChange(lock.tradeConfig, lock.price, lock.pretradePrice)
 }
 
 // getMinimumLockUnit calculates the minimum amount that the current price
