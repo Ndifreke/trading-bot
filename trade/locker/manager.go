@@ -11,7 +11,7 @@ import (
 // LockManager represents a collection of trade locks.
 type LockManager struct {
 	locks        map[names.Symbol]names.LockInterface
-	writeLock    sync.RWMutex
+	wrLock    sync.RWMutex
 	lockCreator  names.LockCreatorFunc
 	prioritySide names.TradeSide
 }
@@ -20,7 +20,7 @@ type LockManager struct {
 func NewLockManager(lockCreator names.LockCreatorFunc) names.LockManagerInterface {
 	return &LockManager{
 		locks:       make(map[names.Symbol]names.LockInterface),
-		writeLock:   sync.RWMutex{},
+		wrLock:   sync.RWMutex{},
 		lockCreator: lockCreator,
 	}
 }
@@ -60,12 +60,11 @@ func (m *LockManager) BestMatureLock() names.LockInterface {
 	var topSellDrift, topBuyDrift float64
 	highest := make(map[names.TradeSide]names.LockInterface)
 
+	m.wrLock.RLock()
 	for _, lock := range m.locks {
 		absoluteChange := lock.AbsoluteGrowthPercent()
 		side := lock.TradeSide()
-
 		if lock.IsRedemptionDue() {
-			m.writeLock.Lock()
 			if side.IsSell() && absoluteChange >= topSellDrift {
 				topSellDrift = absoluteChange
 				highest[lock.TradeSide()] = lock
@@ -74,9 +73,9 @@ func (m *LockManager) BestMatureLock() names.LockInterface {
 				topBuyDrift = absoluteChange
 				highest[lock.TradeSide()] = lock
 			}
-			m.writeLock.Unlock()
 		}
 	}
+	m.wrLock.RUnlock()
 	if m.prioritySide != "" {
 		priority, exist := highest[m.prioritySide]
 		if exist {
@@ -141,9 +140,9 @@ func (l *LockManager) AddLock(config names.TradeConfig, initialPrice float64) na
 
 	validateLock(config, initialPrice)
 	newLock := l.lockCreator(initialPrice, config, false, initialPrice, l, initialPrice)
-	l.writeLock.Lock()
+	l.wrLock.Lock()
 	l.locks[config.Symbol] = newLock
-	l.writeLock.Unlock()
+	l.wrLock.Unlock()
 
 	return newLock
 }

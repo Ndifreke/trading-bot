@@ -169,7 +169,7 @@ func (g Graph) GetPriceMidpoint() float64 {
 *
 */
 func NewBinanceGraph(symbol, interval /*1m for optimal*/ string, pointsLimit int /*15 for optimal*/) *Graph {
-	return NewGraph(kline.NewKline(symbol, interval, pointsLimit))
+return  NewGraph(kline.NewKline(symbol, interval, pointsLimit))
 }
 
 func (graph Graph) DetermineTrend() TrendType {

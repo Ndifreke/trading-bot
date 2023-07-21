@@ -29,8 +29,8 @@ func (c *Subscription) Unsubscribe() bool {
 	return c.broadcast.Unsubscribe(c.tradeConfig)
 }
 
-func (c *Subscription) State() struct{ TradingConfig names.TradeConfig} {
-	return struct{TradingConfig names.TradeConfig}{
+func (c *Subscription) State() struct{ TradingConfig names.TradeConfig } {
+	return struct{ TradingConfig names.TradeConfig }{
 		TradingConfig: c.tradeConfig,
 	}
 }
@@ -79,7 +79,7 @@ func (ps *Broadcaster) TerminateBroadCast() bool {
 }
 
 func (ps *Broadcaster) Subscribe(config names.TradeConfig) Subscription {
-	
+
 	subscriber := Subscription{
 		channel:     make(chan SymbolPriceData),
 		tradeConfig: config,
@@ -98,18 +98,17 @@ func (ps *Broadcaster) Subscribe(config names.TradeConfig) Subscription {
 	ps.readerReport(ps.subscribers)
 	ps.lock.Unlock()
 
-	fmt.Printf("Subscribed %s %s Completed\n", config.Symbol, config.Side)
+	fmt.Printf("Broadcast has subscribed to %s %s\n", config.Symbol, config.Side)
 	return subscriber
 }
 
 // remove this trading config from the list of subscription
 func (ps *Broadcaster) Unsubscribe(config names.TradeConfig) bool {
 	var removed bool
-	fmt.Println("Removed subscription forXX",config)
+
 	ps.lock.Lock()
 	if _, ok := ps.subscribers[config]; ok {
 		delete(ps.subscribers, config)
-		fmt.Println("Removed subscription for",config)
 		removed = true
 	}
 	ps.lock.Unlock()
@@ -128,15 +127,16 @@ func (ps *Broadcaster) UnsubscribeList(list []Subscription) {
 }
 
 func (ps *Broadcaster) publish(symbol string, symbolData SymbolPriceData) {
-
+	ps.lock.Lock()
+	defer ps.lock.Unlock()
 	for _, sub := range ps.subscribers {
-			if sub.tradeConfig.Symbol.String() != symbol {
-				continue
-			}
-			select {
-			case sub.channel <- symbolData:
-				
-			default:
-			}
+		if sub.tradeConfig.Symbol.String() != symbol {
+			continue
 		}
+		select {
+		case sub.channel <- symbolData:
+
+		default:
+		}
+	}
 }

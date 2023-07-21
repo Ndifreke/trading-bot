@@ -2,11 +2,11 @@ package stream
 
 import (
 	"fmt"
+	"github.com/adshao/go-binance/v2"
 	"strconv"
 	"sync"
 	"time"
 	"trading/utils"
-	"github.com/adshao/go-binance/v2"
 )
 
 type Socket struct {
@@ -40,20 +40,19 @@ func readSocketDataDispatch(s *Socket) {
 		go func() {
 			symbolCount := len(s.symbols)
 			for i := 0; i < symbolCount; i++ {
-			
 				go func(i int) {
+					s.lock.Lock()
 					data := SymbolPriceData{Price: utils.Env().RandomNumber(), Symbol: s.symbols[i]}
 					for _, bulkReader := range s.bulkReaders {
-					
 						go bulkReader(s, data)
 					}
+					s.lock.Unlock()
 				}(i)
-				if i +1 == symbolCount {
+				if i+1 == symbolCount {
 					i = -1
 				}
 				time.Sleep(time.Millisecond * 2)
 			}
-		
 		}()
 	} else {
 
@@ -72,11 +71,12 @@ func readSocketDataDispatch(s *Socket) {
 		messageHandler := func(event *binance.WsMarketStatEvent) {
 			price, _ := strconv.ParseFloat(event.LastPrice, 64)
 			data := SymbolPriceData{Price: price, Symbol: event.Symbol}
-
+			s.lock.Lock()
 			go func(data SymbolPriceData) {
 				for _, bulkReader := range s.bulkReaders {
 					go bulkReader(s, data)
 				}
+				s.lock.Unlock()
 			}(data)
 
 		}

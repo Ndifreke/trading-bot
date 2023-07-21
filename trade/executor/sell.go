@@ -49,6 +49,18 @@ func sell(st *sellExecutor) bool {
 	sellOrder := &binance.CreateOrderResponse{}
 
 	if utils.Env().IsTest() {
+		summary(
+			st.config,
+			st.config.Side,
+			st.config.Symbol,
+			lastTradePrice,
+			st.tradeStartPrice,
+			st.marketPrice,
+			st.marketPrice-lastTradePrice,
+			st.fees,
+			st.config.Sell.Quantity,
+			*sellOrder,
+		)
 		return utils.Env().SellTrue()
 	}
 
@@ -62,8 +74,8 @@ func sell(st *sellExecutor) bool {
 		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, preciseQuantity, baseBalance.Locked))
 		return false
 	}
-	
 	summary(
+		st.config,
 		st.config.Side,
 		st.config.Symbol,
 		lastTradePrice,

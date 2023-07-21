@@ -75,8 +75,8 @@ func main() {
 	}
 	a, b := names.Symbol("BNBBUSD"), names.Symbol("BTCUSDT")
 	unused(b, a)
-	v := a
-	g := graph.NewBinanceGraph(v.String(), "15m", 8)
+	v := "LTCUSDT"
+	g := graph.NewBinanceGraph(v, "15m", 8)
 
 	g.SaveToFile("")
 
@@ -159,14 +159,15 @@ func main() {
 
 	//  bestside.NewBestSideTrade(bestConfigs, 12, "15m", names.TradeSideSell, bestside.StatusContention, names.TradeConfig{}).DoTrade()
 	j := []names.TradeConfig{config3, config4, config2, autoConfig}
-	x := []names.TradeConfig{
-		// config3,
-		config4,
-	}
+	// x := []names.TradeConfig{
+	// 	// config3,
+	// 	config4,
+	// }
 	// y := []names.TradeConfig{config4}
 	// limit.NewLimitTrade(j).DoTrade()
-	traders.NewLimitTrade(x).DoTrade()
-	autoBestConfig := []string{"BNBUSDT", "XRPUSDT", "SOLUSDT", "TROYUSDT", "ETHUSDT", "BTCUSDT", "SOLUSDT", "AVAXUSDT"}
+	// traders.NewLimitTrade(x).DoTrade()
+	// autoBestConfig := []string{"BNBUSDT", "XRPUSDT", "SOLUSDT", "TROYUSDT", "ETHUSDT", "BTCUSDT", "SOLUSDT", "AVAXUSDT"}
+	autoBestConfig := []string{"BNBUSDT", "ETHUSDT", "BTCUSDT"}
 	traders.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, traders.StatusContention, autoBestConfig[0]).DoTrade()
 	unused(bestConfigs)
 	unused(autoBestConfig)
@@ -175,6 +176,8 @@ func main() {
 
 	unused(traders.NewAutoTrade)
 	unused(autoConfig)
+	unused(v)
+	unused(g)
 
 	wg.Wait()
 }

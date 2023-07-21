@@ -1,5 +1,28 @@
 package kline
 
+var MockKLineData = []KlineData{
+    {
+      Open: 100,
+      High: 101,
+      Low: 99,
+      Close:  100,
+      
+    },
+	{
+		Open: 100,
+		High: 101,
+		Low: 99,
+		Close:  100,
+		
+	  },
+	  
+}
+
+
+var MockKLinePullUpData = []KlineData{
+	{Open: 15.0, Close: 10.0, High: 40.0, Low: 5.0},
+}
+
 type kLineMock struct {
 	data []KlineData
 }

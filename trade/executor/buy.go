@@ -52,6 +52,18 @@ func buy(exec *buyExecutor) bool {
 	buyOrder := &binance.CreateOrderResponse{}
 
 	if utils.Env().IsTest() {
+		summary(
+			exec.config,
+			exec.config.Side,
+			exec.config.Symbol,
+			lastTradePrice,
+			exec.tradeStartPrice,
+			exec.marketPrice,
+			exec.marketPrice-lastTradePrice,
+			exec.fees,
+			exec.config.Buy.Quantity,
+			*buyOrder,
+		)
 		return utils.Env().SellTrue()
 	}
 
@@ -67,6 +79,7 @@ func buy(exec *buyExecutor) bool {
 	}
 
 	summary(
+		exec.config,
 		exec.config.Side,
 		exec.config.Symbol,
 		lastTradePrice,

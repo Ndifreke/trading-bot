@@ -30,7 +30,7 @@ func tradeConfigsAutoPrepare(configs []names.TradeConfig, interval string, datap
 		})(cfg)
 	}
 
-	wg.Wait()
+	wg.Wait( )
 	return preparedConfig
 }
 
@@ -40,7 +40,6 @@ func configureFromGraph(cfg names.TradeConfig, graph *graph.Graph) names.TradeCo
 	midpoint := graph.GetPriceMidpoint()
 	priceAvgMovement := graph.CalculateAveragePriceMovement()
 	entryPoints := graph.FindAverageEntryPoints()
-
 	sell := cfg.Sell
 
 	// will lock profit everytime the price increases or decreases by priceAvgMovement
@@ -50,8 +49,8 @@ func configureFromGraph(cfg names.TradeConfig, graph *graph.Graph) names.TradeCo
 	sellLimit := math.Max(entryPoints.GainHighPrice, (midpoint + priceAvgMovement))
 
 	percentFromMidPointToHighestGain := helper.GrowthPercent(sellLimit, midpoint)
-	_ = percentFromMidPointToHighestGain
-	sell.RateLimit =  percentFromMidPointToHighestGain //pullpercentageOfMaxorMiN * mininmumAvagersteps IF BUll * 3 sell if Buy *2 buy
+
+	sell.RateLimit = percentFromMidPointToHighestGain //pullpercentageOfMaxorMiN * mininmumAvagersteps IF BUll * 3 sell if Buy *2 buy
 	sell.RateType = names.RatePercent
 	sell.MustProfit = true
 

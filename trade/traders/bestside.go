@@ -183,9 +183,15 @@ func (trader *bestSideTrader) Watch(config names.TradeConfig) {
 		)
 	})
 
-	deviationManager := deviation.NewDeviationManager(trader, configLocker)
+	deviation := deviation.NewDeviationManager(trader, configLocker)
+
 	for sub := range subscription.GetChannel() {
-		go deviationManager.CheckDeviation(&subscription)
+		if trader.status == StatusContention {
+
+			//We only want to run deviation when the status is in contention
+			// to avoid loosing gains while fulliling our contention
+			go deviation.CheckDeviation(&subscription)
+		}
 		configLocker.TryLockPrice(sub.Price)
 	}
 }
