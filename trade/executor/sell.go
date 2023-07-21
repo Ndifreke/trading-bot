@@ -48,17 +48,21 @@ func sell(st *sellExecutor) bool {
 
 	sellOrder := &binance.CreateOrderResponse{}
 
-	if !utils.Env().IsTest() {
-		var err error
-		sellOrder, err = tradeBinance.CreateSellMarketOrder(
-			st.config.Symbol.String(),
-			preciseQuantity,
-		)
-		if err != nil {
-			utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, preciseQuantity, baseBalance.Locked))
-			return false
-		}
+	if utils.Env().IsTest() {
+		return utils.Env().SellTrue()
 	}
+
+	var err error
+	sellOrder, err = tradeBinance.CreateSellMarketOrder(
+		st.config.Symbol.String(),
+		preciseQuantity,
+	)
+
+	if err != nil {
+		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, preciseQuantity, baseBalance.Locked))
+		return false
+	}
+	
 	summary(
 		st.config.Side,
 		st.config.Symbol,

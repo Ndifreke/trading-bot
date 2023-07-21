@@ -50,7 +50,8 @@ func configureFromGraph(cfg names.TradeConfig, graph *graph.Graph) names.TradeCo
 	sellLimit := math.Max(entryPoints.GainHighPrice, (midpoint + priceAvgMovement))
 
 	percentFromMidPointToHighestGain := helper.GrowthPercent(sellLimit, midpoint)
-	sell.RateLimit = percentFromMidPointToHighestGain //pullpercentageOfMaxorMiN * mininmumAvagersteps IF BUll * 3 sell if Buy *2 buy
+	_ = percentFromMidPointToHighestGain
+	sell.RateLimit =  percentFromMidPointToHighestGain //pullpercentageOfMaxorMiN * mininmumAvagersteps IF BUll * 3 sell if Buy *2 buy
 	sell.RateType = names.RatePercent
 	sell.MustProfit = true
 

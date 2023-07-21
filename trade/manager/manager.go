@@ -18,7 +18,7 @@ type TradeManager struct {
 func NewTradeManager(trader names.Trader) *TradeManager {
 	return &TradeManager{
 		trader:       trader,
-		lockCreator:  locker.HighLockCreator,
+		lockCreator:  locker.PeakHighLockCreator,
 		prioritySide: names.TradeSideSell,
 	}
 }

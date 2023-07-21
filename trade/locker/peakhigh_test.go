@@ -9,7 +9,7 @@ import (
 
 func TestTradeLockerSell(t *testing.T) {
 
-	tradeLocker := NewLockManager(HighLockCreator)
+	tradeLocker := NewLockManager(PeakHighLockCreator)
 
 	tc1 := names.TradeConfig{
 		Symbol: "BTCUSD",
@@ -32,8 +32,8 @@ func TestTradeLockerSell(t *testing.T) {
 		},
 	}
 
-	lockOne := tradeLocker.AddLock(tc1, 10).(*highLock)
-	lockTwo := tradeLocker.AddLock(tc2, 5).(*highLock)
+	lockOne := tradeLocker.AddLock(tc1, 10).(*peakHigh)
+	lockTwo := tradeLocker.AddLock(tc2, 5).(*peakHigh)
 	assert.Equal(t, lockOne.GetLockManager(), lockTwo.GetLockManager(), "Expected TradeLocker to be the same")
 
 	assert.Equal(t, lockOne.PretradePrice(), float64(10), "Lock initial price to be 10")
@@ -86,14 +86,14 @@ func TestTradeLockerSell(t *testing.T) {
 		},
 	}
 
-	lockThree := tradeLocker.AddLock(cfg2, 247.100000).(*highLock)
+	lockThree := tradeLocker.AddLock(cfg2, 247.100000).(*peakHigh)
 	lockThree.TryLockPrice(246.200000)
 	assert.False(t, lockThree.IsRedemptionDue())
 }
 
 func TestTradeLockerBuy(t *testing.T) {
 
-	tradeLocker := NewLockManager(HighLockCreator)
+	tradeLocker := NewLockManager(PeakHighLockCreator)
 
 	configBuyOne := names.TradeConfig{
 		Symbol: "BTCUSD",
@@ -116,8 +116,8 @@ func TestTradeLockerBuy(t *testing.T) {
 		},
 	}
 
-	lockOne := tradeLocker.AddLock(configBuyOne, 50).(*highLock)
-	lockTwo := tradeLocker.AddLock(tc2, 16).(*highLock)
+	lockOne := tradeLocker.AddLock(configBuyOne, 50).(*peakHigh)
+	lockTwo := tradeLocker.AddLock(tc2, 16).(*peakHigh)
 	assert.Equal(t, lockOne.GetLockManager(), lockTwo.GetLockManager(), "Expected TradeLocker to be the same")
 
 	assert.Equal(t, lockOne.PretradePrice(), float64(50), "Lock initial price to be 10")
@@ -170,14 +170,14 @@ func TestTradeLockerBuy(t *testing.T) {
 		},
 	}
 
-	lockThree := tradeLocker.AddLock(cfg2, 247).(*highLock)
+	lockThree := tradeLocker.AddLock(cfg2, 247).(*peakHigh)
 	lockThree.TryLockPrice(246)
 	assert.False(t, lockThree.IsRedemptionDue())
 }
 
 func TestTradeLockerBuyAndSell(t *testing.T) {
 
-	tradeLocker := NewLockManager(HighLockCreator)
+	tradeLocker := NewLockManager(PeakHighLockCreator)
 
 	buy := names.TradeConfig{
 		Symbol: "BTCUSD",
@@ -200,8 +200,8 @@ func TestTradeLockerBuyAndSell(t *testing.T) {
 		},
 	}
 
-	buyConfig := tradeLocker.AddLock(buy, 100).(*highLock)
-	sellConfig := tradeLocker.AddLock(sell, 100).(*highLock)
+	buyConfig := tradeLocker.AddLock(buy, 100).(*peakHigh)
+	sellConfig := tradeLocker.AddLock(sell, 100).(*peakHigh)
 
 	assert.False(t, buyConfig.IsRedemptionCandidate(), "Not redeamable if cuurent price is greater than buy stopLimit")
 
@@ -244,11 +244,11 @@ func TestTradeLockerPriority(t *testing.T) {
 		},
 	}
 
-	tradeLockManager := NewLockManager(HighLockCreator)
+	tradeLockManager := NewLockManager(PeakHighLockCreator)
 	tradeLockManager.SetPrioritySide(names.TradeSideSell)
 
-	buyConfig := tradeLockManager.AddLock(buy, 100).(*highLock)
-	sellConfig := tradeLockManager.AddLock(sell, 100).(*highLock)
+	buyConfig := tradeLockManager.AddLock(buy, 100).(*peakHigh)
+	sellConfig := tradeLockManager.AddLock(sell, 100).(*peakHigh)
 
 	assert.False(t, buyConfig.IsRedemptionCandidate(), "Not redeamable if cuurent price is greater than buy stopLimit")
 	buyConfig.TryLockPrice(10)
@@ -260,7 +260,7 @@ func TestTradeLockerPriority(t *testing.T) {
 	assert.True(t, sellConfig.IsRedemptionDue(), "buy be redeemable even if it is not the best candidate")
 	assert.True(t, buyConfig.AbsoluteGrowthPercent() > sellConfig.AbsoluteGrowthPercent())
 
-	manager := NewLockManager(HighLockCreator)
+	manager := NewLockManager(PeakHighLockCreator)
 	manager.SetPrioritySide(names.TradeSideBuy)
 	sellNew := names.TradeConfig{
 		Symbol: "BTCUSD",
@@ -272,8 +272,8 @@ func TestTradeLockerPriority(t *testing.T) {
 			LockDelta: 1,
 		},
 	}
-	sellOne := manager.AddLock(sell, 100).(*highLock)
-	sellTwo := manager.AddLock(sellNew, 99).(*highLock)
+	sellOne := manager.AddLock(sell, 100).(*peakHigh)
+	sellTwo := manager.AddLock(sellNew, 99).(*peakHigh)
 
 	sellOne.TryLockPrice(150)
 	sellOne.TryLockPrice(149)
@@ -295,14 +295,12 @@ func TestTradeLockerGrowth(t *testing.T) {
 		},
 	}
 
-	tradeLockManager := NewLockManager(HighLockCreator)
-	buyConfig := tradeLockManager.AddLock(buy, 100).(*highLock)
+	tradeLockManager := NewLockManager(PeakHighLockCreator)
+	buyConfig := tradeLockManager.AddLock(buy, 100).(*peakHigh)
 	buyConfig.TryLockPrice(91)
-	assert.EqualValues(t, buyConfig.RelativeGrowthPercent(), -9,"")
+	assert.EqualValues(t, buyConfig.RelativeGrowthPercent(), -9, "")
 	buyConfig.TryLockPrice(109)
-	assert.EqualValues(t, buyConfig.RelativeGrowthPercent(), 9,"")
-
-
+	assert.EqualValues(t, buyConfig.RelativeGrowthPercent(), 9, "")
 
 	sell := names.TradeConfig{
 		Symbol: "ETHUSDC",
@@ -315,12 +313,11 @@ func TestTradeLockerGrowth(t *testing.T) {
 		},
 	}
 
-	sellLockManager := NewLockManager(HighLockCreator)
-	sellConfig := sellLockManager.AddLock(sell, 100).(*highLock)
+	sellLockManager := NewLockManager(PeakHighLockCreator)
+	sellConfig := sellLockManager.AddLock(sell, 100).(*peakHigh)
 
 	sellConfig.TryLockPrice(120)
-	assert.EqualValues(t, sellConfig.RelativeGrowthPercent(), 20,"")
+	assert.EqualValues(t, sellConfig.RelativeGrowthPercent(), 20, "")
 	sellConfig.TryLockPrice(80)
-	assert.EqualValues(t, sellConfig.RelativeGrowthPercent(), -20,"")
+	assert.EqualValues(t, sellConfig.RelativeGrowthPercent(), -20, "")
 }
-

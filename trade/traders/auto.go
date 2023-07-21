@@ -102,7 +102,6 @@ func (tm *autoTrader) Done(config names.TradeConfig, locker names.LockInterface)
 				}
 			}
 			tm.broadcast.TerminateBroadCast()
-			fmt.Println("DESTROY OTHER CONFIGS")
 
 			// destroy other configs so they can get new price
 			// recreate the completed config with sides switched

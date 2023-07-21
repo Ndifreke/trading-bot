@@ -9,7 +9,7 @@ import (
 
 func TestFreeLockSellBuy(t *testing.T) {
 
-	tradeLocker := NewLockManager(UnbiasedLockCreator)
+	tradeLocker := NewLockManager(ImmediateDueLockCreator)
 
 	tc1 := names.TradeConfig{
 		Symbol: "BTCUSD",
@@ -32,8 +32,8 @@ func TestFreeLockSellBuy(t *testing.T) {
 		},
 	}
 
-	lockOne := tradeLocker.AddLock(tc1, 50).(*unbiaseLock)
-	lockTwo := tradeLocker.AddLock(tc2, 16).(*unbiaseLock)
+	lockOne := tradeLocker.AddLock(tc1, 50).(*immediateDueLock)
+	lockTwo := tradeLocker.AddLock(tc2, 16).(*immediateDueLock)
 	assert.Equal(t, lockOne.GetLockManager(), lockTwo.GetLockManager(), "Expected TradeLocker to be the same")
 
 	assert.Equal(t, lockOne.PretradePrice(), float64(50), "Lock initial price to be 10")
@@ -81,7 +81,7 @@ func TestFreeLockSellBuy(t *testing.T) {
 		},
 	}
 
-	lockThree := tradeLocker.AddLock(cfg2, 247).(*unbiaseLock)
+	lockThree := tradeLocker.AddLock(cfg2, 247).(*immediateDueLock)
 	lockThree.TryLockPrice(246)
 	assert.False(t, lockThree.IsRedemptionDue())
 }

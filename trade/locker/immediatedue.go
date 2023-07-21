@@ -6,12 +6,11 @@ import (
 	"trading/names"
 )
 
-// Free Lock does not care about who the highest lock is, it immediately reports a lock as due
+// immediate due lock does not care about who the highest lock is, it immediately reports a lock as due
 // When it is mature and has not reduced below the last highest point
 
-// type freeLock Lock
 
-type unbiaseLock struct {
+type immediateDueLock struct {
 	price                     float64 // Only lock when it is up to a percent lock.
 	pretradePrice             float64 // Starting price.
 	gainsAccrude              float64 // Current gains accrued.
@@ -22,8 +21,8 @@ type unbiaseLock struct {
 	maturityCandidateCallback func(names.LockInterface)
 }
 
-func UnbiasedLockCreator(price float64, tradeConfig names.TradeConfig, redemptionIsMature bool, pretradePrice float64, lockManager names.LockManagerInterface, gainsAccrude float64) names.LockInterface {
-	return &unbiaseLock{
+func ImmediateDueLockCreator(price float64, tradeConfig names.TradeConfig, redemptionIsMature bool, pretradePrice float64, lockManager names.LockManagerInterface, gainsAccrude float64) names.LockInterface {
+	return &immediateDueLock{
 		price:              price,
 		tradeConfig:        tradeConfig,
 		redemptionIsMature: redemptionIsMature,
@@ -34,27 +33,27 @@ func UnbiasedLockCreator(price float64, tradeConfig names.TradeConfig, redemptio
 }
 
 // GetTradeLimit returns the stop loss limit for the lock.
-func (lock *unbiaseLock) GetTradeLimit() float64 {
+func (lock *immediateDueLock) GetTradeLimit() float64 {
 	return helper.CalculateTradePrice(lock.tradeConfig, lock.pretradePrice).Limit
 }
 
 // GetTradeLimit returns the stop loss limit for the lock.
-func (lock *unbiaseLock) RemoveFromManager() bool {
+func (lock *immediateDueLock) RemoveFromManager() bool {
 	return lock.lockManager.RemoveLock(lock)
 }
 
 // PretradePrice returns the pre-trade price for the lock.
-func (lock *unbiaseLock) PretradePrice() float64 {
+func (lock *immediateDueLock) PretradePrice() float64 {
 	return lock.pretradePrice
 }
 
 // GetLockedPrice returns the current locked price for the lock.
-func (lock *unbiaseLock) GetLockedPrice() float64 {
+func (lock *immediateDueLock) GetLockedPrice() float64 {
 	return lock.gainsAccrude
 }
 
 // GetLockState returns the current state of the lock.
-func (lock *unbiaseLock) GetLockState() names.LockState {
+func (lock *immediateDueLock) GetLockState() names.LockState {
 	return names.LockState{
 		StopLoss:                    lock.GetTradeLimit(),
 		LockOwner:                   lock.lockManager,
@@ -72,24 +71,24 @@ func (lock *unbiaseLock) GetLockState() names.LockState {
 }
 
 // GetLockManager returns the owner of the lock.
-func (lock *unbiaseLock) GetLockManager() names.LockManagerInterface {
+func (lock *immediateDueLock) GetLockManager() names.LockManagerInterface {
 	return lock.lockManager
 }
 
 // AbsoluteGrowthPercent calculates the percentage by which the current price has deviated from the pre-trade price.
 // A positive value means the current locked price has gained.
-func (lock unbiaseLock) AbsoluteGrowthPercent() float64 {
+func (lock immediateDueLock) AbsoluteGrowthPercent() float64 {
 	percentChange := tradePricePercentChange(lock.tradeConfig, lock.price, lock.pretradePrice)
 	return math.Abs(percentChange)
 }
-func (lock unbiaseLock) RelativeGrowthPercent() float64 {
+func (lock immediateDueLock) RelativeGrowthPercent() float64 {
 	return tradePricePercentChange(lock.tradeConfig, lock.price, lock.pretradePrice)
 }
 
 // getMinimumLockUnit calculates the minimum amount that the current price
 // needs to change in order to lock in a profit. It calculates the value of
 // LockUnit as a percentage of stopLossLimit.
-func (lock *unbiaseLock) getMinimumLockUnit() float64 {
+func (lock *immediateDueLock) getMinimumLockUnit() float64 {
 	// LockUnit is derived as the product of stopLossLimit and the percentage
 	// represented by lockDelta
 	if lock.tradeConfig.Side == names.TradeSideBuy {
@@ -99,7 +98,7 @@ func (lock *unbiaseLock) getMinimumLockUnit() float64 {
 }
 
 // TryLockPrice attempts to lock the price. A price will only lock if it is greater or less than minimum gain
-func (lock *unbiaseLock) TryLockPrice(price float64) {
+func (lock *immediateDueLock) TryLockPrice(price float64) {
 	lock.price = price
 	config := lock.tradeConfig
 
@@ -136,23 +135,23 @@ func (lock *unbiaseLock) TryLockPrice(price float64) {
 }
 
 // determines if it is the most profitable lock from other locks of similar action
-func (lock *unbiaseLock) IsRedemptionCandidate() bool {
+func (lock *immediateDueLock) IsRedemptionCandidate() bool {
 	return lock.IsRedemptionDue()
 }
 
-func (lock *unbiaseLock) IsRedemptionDue() bool {
+func (lock *immediateDueLock) IsRedemptionDue() bool {
 	return lock.redemptionIsMature
 }
 
-func (l *unbiaseLock) SetRedemptionCandidateCallback(cb func(lock names.LockInterface)) {
+func (l *immediateDueLock) SetRedemptionCandidateCallback(cb func(lock names.LockInterface)) {
 	l.maturityCandidateCallback = cb
 }
 
 // Total amount of units of price delta that has been locked in
-func (lock unbiaseLock) getLockedUnits(config names.TradeConfig) float64 {
+func (lock immediateDueLock) getLockedUnits(config names.TradeConfig) float64 {
 	return (lock.gainsAccrude - lock.GetTradeLimit()) / lock.getMinimumLockUnit()
 }
 
-func (lock unbiaseLock) TradeSide() names.TradeSide {
+func (lock immediateDueLock) TradeSide() names.TradeSide {
 	return lock.tradeConfig.Side
 }

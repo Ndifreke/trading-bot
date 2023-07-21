@@ -10,7 +10,6 @@ import (
 
 	"trading/trade/graph"
 	"trading/trade/traders"
-	
 )
 
 func init() {
@@ -82,7 +81,7 @@ func main() {
 	g.SaveToFile("")
 
 	config3 := names.TradeConfig{
-		Symbol:   "DIAUSDT",
+		Symbol:    "DIAUSDT",
 		Side:      names.TradeSideSell,
 		IsCyclick: true,
 		Sell: names.SideConfig{
@@ -110,21 +109,21 @@ func main() {
 	}
 
 	config4 := names.TradeConfig{
-IsCyclick:  true,
+		IsCyclick: true,
 
-		Symbol:    "BTCBUSD",
-		Side:      names.TradeSideBuy,
+		Symbol: "BTCBUSD",
+		Side:   names.TradeSideBuy,
 		Sell: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  0.9,
+			RateType:   names.RateFixed,
+			RateLimit:  50,
 			LockDelta:  0.1,
 			Quantity:   0.54,
 		},
 		Buy: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  0.5,
+			RateType:   names.RateFixed,
+			RateLimit:  50,
 			LockDelta:  0.1,
 			Quantity:   100,
 		},
@@ -168,12 +167,12 @@ IsCyclick:  true,
 	// limit.NewLimitTrade(j).DoTrade()
 	traders.NewLimitTrade(x).DoTrade()
 	autoBestConfig := []string{"BNBUSDT", "XRPUSDT", "SOLUSDT", "TROYUSDT", "ETHUSDT", "BTCUSDT", "SOLUSDT", "AVAXUSDT"}
-	// bestside.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, bestside.StatusContention, autoBestConfig[0]).DoTrade()
+	traders.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, traders.StatusContention, autoBestConfig[0]).DoTrade()
 	unused(bestConfigs)
 	unused(autoBestConfig)
 	unused(traders.NewBestSideTrade)
 	unused(j)
-	
+
 	unused(traders.NewAutoTrade)
 	unused(autoConfig)
 

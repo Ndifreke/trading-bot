@@ -3,7 +3,6 @@ package stream
 import (
 	"fmt"
 	"sync"
-	"trading/helper"
 	"trading/names"
 	"trading/utils"
 )
@@ -80,6 +79,14 @@ func (ps *Broadcaster) TerminateBroadCast() bool {
 }
 
 func (ps *Broadcaster) Subscribe(config names.TradeConfig) Subscription {
+	
+	subscriber := Subscription{
+		channel:     make(chan SymbolPriceData),
+		tradeConfig: config,
+		broadcast:   ps,
+	}
+
+	ps.lock.Lock()
 
 	for _, sub := range ps.subscribers {
 		if sub.tradeConfig == config {
@@ -87,12 +94,6 @@ func (ps *Broadcaster) Subscribe(config names.TradeConfig) Subscription {
 		}
 	}
 
-	subscriber := Subscription{
-		channel:     make(chan SymbolPriceData),
-		tradeConfig: config,
-		broadcast:   ps,
-	}
-	ps.lock.Lock()
 	ps.subscribers[config] = subscriber
 	ps.readerReport(ps.subscribers)
 	ps.lock.Unlock()
@@ -104,11 +105,11 @@ func (ps *Broadcaster) Subscribe(config names.TradeConfig) Subscription {
 // remove this trading config from the list of subscription
 func (ps *Broadcaster) Unsubscribe(config names.TradeConfig) bool {
 	var removed bool
-	var totalBefore = len(ps.subscribers)
-
+	fmt.Println("Removed subscription forXX",config)
 	ps.lock.Lock()
 	if _, ok := ps.subscribers[config]; ok {
 		delete(ps.subscribers, config)
+		fmt.Println("Removed subscription for",config)
 		removed = true
 	}
 	ps.lock.Unlock()
@@ -116,12 +117,6 @@ func (ps *Broadcaster) Unsubscribe(config names.TradeConfig) bool {
 	// or breaking will leave duplicates. If we must do so
 	// then remove the break to  allow searching all the subscribers
 
-	if removed {
-		fmt.Printf("Removed %s:%s vs Before %d After %d %s",
-			config.Symbol, config.Side, totalBefore, len(ps.subscribers), config.Side)
-	} else {
-		fmt.Printf("Could not remove %s:%s vs  Before %d After %s %s", config.Symbol, config.Side, totalBefore, helper.Stringify(ps.subscribers), config.Side)
-	}
 	ps.readerReport(ps.subscribers)
 	return removed
 }
@@ -133,12 +128,14 @@ func (ps *Broadcaster) UnsubscribeList(list []Subscription) {
 }
 
 func (ps *Broadcaster) publish(symbol string, symbolData SymbolPriceData) {
-		for _, sub := range ps.subscribers {
+
+	for _, sub := range ps.subscribers {
 			if sub.tradeConfig.Symbol.String() != symbol {
 				continue
 			}
 			select {
 			case sub.channel <- symbolData:
+				
 			default:
 			}
 		}

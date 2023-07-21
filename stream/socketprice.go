@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"time"
 	"trading/utils"
 	"github.com/adshao/go-binance/v2"
 )
@@ -35,42 +36,65 @@ func NewSocketStream(symbols []string) StreamInterface {
 
 func readSocketDataDispatch(s *Socket) {
 
-	if len(s.bulkReaders) == 0 {
-		utils.LogInfo("<Socket Stream>: No API data reader found")
-	}
-
-	errorHandler := func(err error) {
-		if s.failHandler != nil {
-			s.CloseLog(fmt.Sprintf("<Socket Stream>: An Error happened will close and fail over %s", err.Error()))
-			s.failHandler(s)
-		}
-		s.CloseLog(err.Error())
-	}
-
-	messageHandler := func(event *binance.WsMarketStatEvent) {
-		price, _ := strconv.ParseFloat(event.LastPrice, 64)
-		data := SymbolPriceData{Price: price, Symbol: event.Symbol}
-
-		go func(data SymbolPriceData) {
-			for _, bulkReader := range s.bulkReaders {
-				go bulkReader(s, data)
+	if utils.Env().IsTest() {
+		go func() {
+			symbolCount := len(s.symbols)
+			for i := 0; i < symbolCount; i++ {
+			
+				go func(i int) {
+					data := SymbolPriceData{Price: utils.Env().RandomNumber(), Symbol: s.symbols[i]}
+					for _, bulkReader := range s.bulkReaders {
+					
+						go bulkReader(s, data)
+					}
+				}(i)
+				if i +1 == symbolCount {
+					i = -1
+				}
+				time.Sleep(time.Millisecond * 2)
 			}
-		}(data)
+		
+		}()
+	} else {
 
+		if len(s.bulkReaders) == 0 {
+			utils.LogInfo("<Socket Stream>: No API data reader found")
+		}
+
+		errorHandler := func(err error) {
+			if s.failHandler != nil {
+				s.CloseLog(fmt.Sprintf("<Socket Stream>: An Error happened will close and fail over %s", err.Error()))
+				s.failHandler(s)
+			}
+			s.CloseLog(err.Error())
+		}
+
+		messageHandler := func(event *binance.WsMarketStatEvent) {
+			price, _ := strconv.ParseFloat(event.LastPrice, 64)
+			data := SymbolPriceData{Price: price, Symbol: event.Symbol}
+
+			go func(data SymbolPriceData) {
+				for _, bulkReader := range s.bulkReaders {
+					go bulkReader(s, data)
+				}
+			}(data)
+
+		}
+
+		donChannel, stopChannel, err := binance.WsCombinedMarketStatServe(
+			s.symbols,
+			messageHandler,
+			errorHandler,
+		)
+
+		s.stopChannel = stopChannel
+		s.doneChannel = donChannel
+
+		if err != nil {
+			errorHandler(err)
+		}
 	}
-
-	donChannel, stopChannel, err := binance.WsCombinedMarketStatServe(
-		s.symbols,
-		messageHandler,
-		errorHandler,
-	)
-
-	s.stopChannel = stopChannel
-	s.doneChannel = donChannel
-
-	if err != nil {
-		errorHandler(err)
-	}
+	fmt.Println("At this end")
 }
 
 func (s *Socket) RegisterBroadcast(key string, reader ReaderFunc) {
