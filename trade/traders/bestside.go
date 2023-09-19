@@ -102,7 +102,6 @@ func (t *bestSideTrader) RemoveConfig(config names.TradeConfig) bool {
 	return removed
 }
 
-
 // Add a new config to start watching. If this config exist already
 // it will be replaced by the added config and the channel and lock assocated with
 // them will also be removed
@@ -196,7 +195,8 @@ func (trader *bestSideTrader) Watch(config names.TradeConfig) {
 	}
 }
 
-func updateConfigs(configs []names.TradeConfig, bestSide names.TradeSide, bestConfig names.TradeConfig, status status) ([]names.TradeConfig, names.TradeConfig) {
+// Update this configs from the best side to it contention side
+func configsSideToContention(configs []names.TradeConfig, bestSide names.TradeSide, bestConfig names.TradeConfig, status status) ([]names.TradeConfig, names.TradeConfig) {
 	if status == StatusFullfilment {
 		bestConfig.Side = bestSide
 	}
@@ -211,7 +211,7 @@ func updateConfigs(configs []names.TradeConfig, bestSide names.TradeSide, bestCo
 
 type AutoBestBestSideConfig struct {
 	Symbol    names.Symbol
-	Deviation names.SideConfigDeviation
+	Deviation names.DeviationSync
 }
 
 func NewAutoBestSide(config []string, datapoints int, interval string, bestSide names.TradeSide, status status, bestSymbol string) *manager.TradeManager {
@@ -231,11 +231,11 @@ func NewAutoBestSide(config []string, datapoints int, interval string, bestSide 
 
 // bestSide the side that the contention will fall to after the parallel side finds a candidate
 func NewBestSideTrade(configs []names.TradeConfig, datapoints int, interval string, bestSide names.TradeSide, status status, bestConfig names.TradeConfig) *manager.TradeManager {
-	updatedConfigs, updatedBestConfig := updateConfigs(configs, bestSide, bestConfig, status)
-	preparedConfig := tradeConfigsAutoPrepare(updatedConfigs, interval, datapoints)
+	updatedConfigs, updatedBestConfig := configsSideToContention(configs, bestSide, bestConfig, status)
+	preparedConfig := alignStopWithGraph(updatedConfigs, interval, datapoints)
 
 	if status == StatusFullfilment {
-		updatedBestConfig = tradeConfigsAutoPrepare([]names.TradeConfig{updatedBestConfig}, interval, datapoints)[0]
+		updatedBestConfig = alignStopWithGraph([]names.TradeConfig{updatedBestConfig}, interval, datapoints)[0]
 	}
 
 	bestSideTrader := getBestSideTrader(preparedConfig, bestSide, status, updatedBestConfig)

@@ -44,14 +44,14 @@ func main() {
 		IsCyclick: true,
 
 		Sell: names.SideConfig{
-			RateLimit:  0,
-			RateType:   names.RatePercent,
+			StopLimit:  0,
+			LimitType:  names.RatePercent,
 			Quantity:   1,
 			MustProfit: true,
 		},
 		Buy: names.SideConfig{
-			RateLimit:  1,
-			RateType:   names.RatePercent,
+			StopLimit:  1,
+			LimitType:  names.RatePercent,
 			Quantity:   1,
 			MustProfit: true,
 		},
@@ -61,13 +61,13 @@ func main() {
 	}
 	config2 := names.TradeConfig{
 		Sell: names.SideConfig{
-			RateLimit: 0,
-			RateType:  names.RatePercent,
+			StopLimit: 0,
+			LimitType: names.RatePercent,
 			Quantity:  200,
 		},
 		Buy: names.SideConfig{
-			RateLimit: 99,
-			RateType:  names.RatePercent,
+			StopLimit: 99,
+			LimitType: names.RatePercent,
 			Quantity:  1,
 		},
 		Symbol: "BTCBUSD",
@@ -86,24 +86,24 @@ func main() {
 		IsCyclick: true,
 		Sell: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  2,
+			LimitType:  names.RatePercent,
+			StopLimit:  1,
 			LockDelta:  0.4,
 			Quantity:   -1,
-			Deviation: names.SideConfigDeviation{
-				SwitchSide: true,
-				Threshold:  0.00034,
+			DeviationSync: names.DeviationSync{
+				FlipSide: true,
+				Delta:    0.00034,
 			},
 		},
 		Buy: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  2,
+			LimitType:  names.RatePercent,
+			StopLimit:  1,
 			LockDelta:  0.4,
 			Quantity:   -1,
-			Deviation: names.SideConfigDeviation{
-				SwitchSide: true,
-				Threshold:  0.00034,
+			DeviationSync: names.DeviationSync{
+				FlipSide: true,
+				Delta:    0.00034,
 			},
 		},
 	}
@@ -115,15 +115,15 @@ func main() {
 		Side:   names.TradeSideBuy,
 		Sell: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RateFixed,
-			RateLimit:  50,
+			LimitType:  names.RateFixed,
+			StopLimit:  50,
 			LockDelta:  0.1,
 			Quantity:   0.54,
 		},
 		Buy: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RateFixed,
-			RateLimit:  50,
+			LimitType:  names.RateFixed,
+			StopLimit:  50,
 			LockDelta:  0.1,
 			Quantity:   100,
 		},
@@ -141,15 +141,15 @@ func main() {
 		IsCyclick: !true,
 		Buy: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  10,
+			LimitType:  names.RatePercent,
+			StopLimit:  10,
 			LockDelta:  10,
 			Quantity:   -3,
 		},
 		Sell: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  90.5,
+			LimitType:  names.RatePercent,
+			StopLimit:  90.5,
 			LockDelta:  0.1,
 			Quantity:   100,
 		},
@@ -167,17 +167,130 @@ func main() {
 	// limit.NewLimitTrade(j).DoTrade()
 	// traders.NewLimitTrade(x).DoTrade()
 	// autoBestConfig := []string{"BNBUSDT", "XRPUSDT", "SOLUSDT", "TROYUSDT", "ETHUSDT", "BTCUSDT", "SOLUSDT", "AVAXUSDT"}
-	autoBestConfig := []string{"BNBUSDT", "ETHUSDT", "BTCUSDT"}
-	traders.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, traders.StatusContention, autoBestConfig[0]).DoTrade()
 	unused(bestConfigs)
+
+	autoBestConfig := []string{"BNBUSDT", "ETHUSDT", "BTCUSDT", "PEPEUSDT"}
+	// traders.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, traders.StatusContention, autoBestConfig[0]).DoTrade()
 	unused(autoBestConfig)
+
+	assetGainsConfig := names.TradeConfig{
+		Symbol:    "BNBUSDT",
+		Side:      names.TradeSideSell,
+		IsCyclick: true,
+		Buy: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  1,
+			LockDelta:  10,
+			Quantity:   -1,
+		},
+		Sell: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  1,
+			LockDelta:  20,
+			Quantity:   names.MAX_LIMIT,
+		},
+	}
+	// traders.NewPeggedLimit([]names.TradeConfig{assetGainsConfig}).DoTrade()
+
 	unused(traders.NewBestSideTrade)
 	unused(j)
+
+	GMXUSDT := names.TradeConfig{
+		Symbol:    "CRVUSDT",
+		Side:      names.TradeSideSell,
+		IsCyclick: true,
+		Buy: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  2,
+			LockDelta:  50,
+			Quantity:   names.MAX_LIMIT,
+			DeviationSync: names.DeviationSync{
+				Delta: 91,
+			},
+		},
+		Sell: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  2,
+			LockDelta:  50,
+			Quantity:   names.MAX_LIMIT,
+			DeviationSync: names.DeviationSync{
+				Delta: 91,
+			},
+		},
+	}
+
+	BNBUSDT := names.TradeConfig{
+		Symbol:    "BNBUSDT",
+		Side:      names.TradeSideSell,
+		IsCyclick: true,
+		Buy: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  90,
+			LockDelta:  20,
+			Quantity:   -1,
+		},
+		Sell: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  9,
+			LockDelta:  30,
+			Quantity:   -1,
+		},
+	}
+
+	// XRPUSDT := names.TradeConfig{
+	// 	Symbol:    "XRPUSDT",
+	// 	Side:      names.TradeSideSell,
+	// 	IsCyclick: true,
+	// 	Buy: names.SideConfig{
+	// 		MustProfit: true,
+	// 		RateType:   names.RatePercent,
+	// 		RateLimit:  2,
+	// 		LockDelta:  30,
+	// 		Quantity:   -1,
+	// 	},
+	// 	Sell: names.SideConfig{
+	// 		MustProfit: true,
+	// 		RateType:   names.RatePercent,
+	// 		RateLimit:  2,
+	// 		LockDelta:  30,
+	// 		Quantity:   -1,
+	// 	},
+	// }
+
+	// AMPUSDT := names.TradeConfig{
+	// 	Symbol:    "AMPUSDT",
+	// 	Side:      names.TradeSideSell,
+	// 	IsCyclick: true,
+	// 	Buy: names.SideConfig{
+	// 		MustProfit: true,
+	// 		RateType:   names.RatePercent,
+	// 		RateLimit:  2,
+	// 		LockDelta:  30,
+	// 		Quantity:   -1,
+	// 	},
+	// 	Sell: names.SideConfig{
+	// 		MustProfit: true,
+	// 		RateType:   names.RatePercent,
+	// 		RateLimit:  2,
+	// 		LockDelta:  30,
+	// 		Quantity:   -1,
+	// 	},
+	// }
+
+	peggedBestConfigs := []names.TradeConfig{ /*BNBUSDT,XRPUSDT,*/ GMXUSDT /*,AMPUSDT*/}
+	traders.NewPeggedBestSide(peggedBestConfigs, names.TradeSideSell, traders.StatusFullfilment, peggedBestConfigs[0]).DoTrade()
 
 	unused(traders.NewAutoTrade)
 	unused(autoConfig)
 	unused(v)
-	unused(g)
+	unused(assetGainsConfig)
+	unused(BNBUSDT)
 
 	wg.Wait()
 }

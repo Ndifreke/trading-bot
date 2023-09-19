@@ -1,19 +1,22 @@
 package names
 
 const (
-	RatePercent   RateType  = "PERCENT"
-	RateFixed     RateType  = "FIXED"
+	RatePercent StopLimit = "PERCENT"
+	// RateUSDT   RateType  = "USDT"
+	RateFixed     StopLimit = "FIXED"
 	TradeSideBuy  TradeSide = "BUY"
 	TradeSideSell TradeSide = "SELL"
 )
 
-type RateType string
+var MAX_LIMIT float64 = -1
 
-func (pt RateType) IsPercent() bool {
+type StopLimit string
+
+func (pt StopLimit) IsPercent() bool {
 	return pt == RatePercent
 }
 
-func (pt RateType) IsFixed() bool {
+func (pt StopLimit) IsFixed() bool {
 	return pt == RateFixed
 }
 
@@ -31,20 +34,23 @@ func (ta TradeSide) String() string {
 	return string(ta)
 }
 
-type SideConfigDeviation struct {
-	Threshold  float64 //percent from pretrade price to initiate deviation action
-	SwitchSide bool    // switch side when deviation condition is met
+type DeviationSync struct {
+	//percent from pretrade price to initiate deviation action
+	Delta float64
+	// switch side when deviation condition is met
+	FlipSide bool
 }
+
 type SideConfig struct {
 	// Determins the position where trade should be executed. Trade may not actually execute here for a number of reasons
 	// if locker is still in positive or the fee prevents profit
-	RateLimit  float64
-	RateType   RateType //PERCENT, FIXED_VALUE
+	StopLimit  float64
+	LimitType  StopLimit //PERCENT, FIXED_VALUE
 	Quantity   float64
 	MustProfit bool
-	// determines what percentage change in price to lock positive price movement
-	LockDelta float64
-	Deviation SideConfigDeviation
+	//determines what percentage change in price to lock positive price movement
+	LockDelta     float64
+	DeviationSync DeviationSync
 }
 
 type TradeConfig struct {
@@ -56,8 +62,18 @@ type TradeConfig struct {
 	IsCyclick     bool // Will run both sell and buy after each other is completed
 }
 
+type TradeConfigs []TradeConfig
+
+func (configs TradeConfigs) ListSymbol() []string {
+	var s []string
+	for _, config := range configs {
+		s = append(s, config.Symbol.String())
+	}
+	return s
+}
+
 type LockState struct {
-	StopLoss                    float64 // limit that price should not go below
+	StopLimit                   float64 // limit that price should not go below
 	Price                       float64 //only lock when it is upto a percent lock
 	PretradePrice               float64 //starting price
 	AccrudGains                 float64 //current gains accrude
@@ -117,10 +133,4 @@ type TrendConfig struct {
 	Support    float64
 	Resistance float64
 	SpikeCount int
-}
-
-type LowerHighTrendConfig struct {
-}
-
-type LowerLowTrendConfig struct {
 }

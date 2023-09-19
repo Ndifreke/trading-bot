@@ -9,7 +9,6 @@ import (
 // immediate due lock does not care about who the highest lock is, it immediately reports a lock as due
 // When it is mature and has not reduced below the last highest point
 
-
 type immediateDueLock struct {
 	price                     float64 // Only lock when it is up to a percent lock.
 	pretradePrice             float64 // Starting price.
@@ -55,7 +54,7 @@ func (lock *immediateDueLock) GetLockedPrice() float64 {
 // GetLockState returns the current state of the lock.
 func (lock *immediateDueLock) GetLockState() names.LockState {
 	return names.LockState{
-		StopLoss:                    lock.GetTradeLimit(),
+		StopLimit:                   lock.GetTradeLimit(),
 		LockOwner:                   lock.lockManager,
 		AccrudGains:                 lock.gainsAccrude,
 		TradeConfig:                 lock.tradeConfig,

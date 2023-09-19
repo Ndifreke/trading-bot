@@ -9,11 +9,21 @@ import (
 	"trading/names"
 )
 
-func IsSameConfig(a, b  names.TradeConfig)bool{
+func GetSideConfig(config names.TradeConfig) (names.SideConfig, error) {
+	if config.Side == names.TradeSideBuy {
+		return config.Buy, nil
+	}
+	if config.Side == names.TradeSideSell {
+		return config.Sell, nil
+	}
+	return names.SideConfig{}, fmt.Errorf("side Config is invalid")
+}
+
+func IsSameConfig(a, b names.TradeConfig) bool {
 	return a.Side == b.Side && a.Symbol == b.Symbol
 }
 
-func SideIsValid(side names.TradeSide) bool{
+func SideIsValid(side names.TradeSide) bool {
 	return side == names.TradeSideSell || side == names.TradeSideBuy
 }
 
@@ -40,10 +50,10 @@ func calculateSellPriceFromPercent(percentage, price float64) float64 {
 }
 
 func CalculateTradeBuyFixedPrice(price names.SideConfig, priceRate float64) float64 {
-	if price.RateType.IsPercent() {
-		return calculateBuyPriceFromPercent(price.RateLimit, priceRate)
+	if price.LimitType.IsPercent() {
+		return calculateBuyPriceFromPercent(price.StopLimit, priceRate)
 	}
-	return price.RateLimit
+	return price.StopLimit
 }
 
 // calculates the sell price for the Price symbol based on the given price type and rate.
@@ -51,10 +61,10 @@ func CalculateTradeBuyFixedPrice(price names.SideConfig, priceRate float64) floa
 // If the price type is 'fixed', the sell price will be a fixed amount, the PriceRate.
 // returns the calculated sell price for the given Price.
 func CalculateTradeFixedSellPrice(price names.SideConfig, priceRate float64) float64 {
-	if price.RateType.IsPercent() {
-		return calculateSellPriceFromPercent(price.RateLimit, priceRate)
+	if price.LimitType.IsPercent() {
+		return calculateSellPriceFromPercent(price.StopLimit, priceRate)
 	}
-	return price.RateLimit
+	return price.StopLimit
 }
 
 func CalculateTradePrice(trade names.TradeConfig, priceRate float64) struct {
@@ -68,16 +78,16 @@ func CalculateTradePrice(trade names.TradeConfig, priceRate float64) struct {
 	if trade.Side == names.TradeSideBuy {
 		fixedPrice = CalculateTradeBuyFixedPrice(trade.Buy, priceRate)
 
-		percent = trade.Buy.RateLimit
-		if trade.Buy.RateType == names.RateFixed {
+		percent = trade.Buy.StopLimit
+		if trade.Buy.LimitType == names.RateFixed {
 			//assumes buy position is always lower than current position
 			percent = GrowthPercent(fixedPrice, priceRate)
 		}
 	} else {
 		fixedPrice = CalculateTradeFixedSellPrice(trade.Sell, priceRate)
 
-		percent = trade.Sell.RateLimit
-		if trade.Sell.RateType == names.RateFixed {
+		percent = trade.Sell.StopLimit
+		if trade.Sell.LimitType == names.RateFixed {
 			//assumes sell position is always higher than current position
 			percent = GrowthPercent(fixedPrice, priceRate)
 		}
@@ -97,7 +107,7 @@ type TradeFee struct {
 func GetTradeFee(trade names.TradeConfig, currentPrice float64) TradeFee {
 	//TODO IMPLEMENT FOR BUY
 	quanity := trade.Sell.Quantity
-	
+
 	fee := (float64(quanity) * currentPrice) * 0.001
 	return TradeFee{
 		Value:  fee,
@@ -116,6 +126,16 @@ func GrowthPercent(newValue, oldValue float64) float64 {
 	// percentageIncrease := ((max - min) / min) * 100
 	percentageIncrease := ((newValue - oldValue) / oldValue) * 100
 	return percentageIncrease
+}
+
+// GetValueOfPercent calculates the amount that represents the given percentage of the value.
+// It takes a value and a percentage as input and returns the calculated amount.
+// The percentage should be between 0 and 100 (inclusive).
+func GetValueOfPercent(value, percentage float64) float64 {
+	if percentage <= 0 || percentage > 100 {
+		return 0
+	}
+	return (value * percentage) / 100
 }
 
 // Get what percentage of price is priceUnit

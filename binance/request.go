@@ -31,7 +31,7 @@ func GetPriceAverage(symbol string) api.RequestResponse[PriceJson] {
 
 func GetPriceLatest(symbol string) float64 {
 	if utils.Env().IsTest() {
-		return 10
+		return utils.Env().RandomNumber()
 	}
 	price, error := GetClient().NewListPricesService().Symbol(symbol).Do(context.Background())
 	if error != nil {

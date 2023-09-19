@@ -2,6 +2,7 @@ package names
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"trading/binance"
@@ -29,6 +30,14 @@ func (s Symbol) String() string {
 	return string(s)
 }
 
+func (s Symbol) Gains(pretradeValue, spotValue float64, side TradeSide) string {
+	sellGains := spotValue - pretradeValue
+	if side == TradeSideBuy && sellGains <= math.MinInt64 {
+		sellGains = math.Copysign(sellGains, 1)
+	}
+	return s.FormatQuotePrice(sellGains)
+}
+
 // FormatBasePrice formats a price as a string with the base currency symbol.
 func (s Symbol) FormatBasePrice(price float64) string {
 	baseSymbol := s.ParseTradingPair().Base
@@ -44,21 +53,6 @@ func (s Symbol) FormatQuotePrice(price float64) string {
 type symbols struct {
 	symbols []binanceLib.Symbol
 }
-
-// var exchangeInfo *binanceLib.ExchangeInfo
-// func GetSymbols() symbols {
-// 	return symbols{
-// 		symbols: getExchangeInfo().Symbols,
-// 	}
-// }
-
-// func getExchangeInfo() *binanceLib.ExchangeInfo {
-// 	if exchangeInfo == nil {
-// 		exchangeInfo = binance.GetExchangeInfo2()
-// 		return exchangeInfo
-// 	}
-// 	return exchangeInfo
-// }
 
 func GetSymbols() symbols {
 	return symbols{

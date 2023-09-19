@@ -11,7 +11,7 @@ import (
 // LockManager represents a collection of trade locks.
 type LockManager struct {
 	locks        map[names.Symbol]names.LockInterface
-	wrLock    sync.RWMutex
+	wrLock       sync.RWMutex
 	lockCreator  names.LockCreatorFunc
 	prioritySide names.TradeSide
 }
@@ -20,7 +20,7 @@ type LockManager struct {
 func NewLockManager(lockCreator names.LockCreatorFunc) names.LockManagerInterface {
 	return &LockManager{
 		locks:       make(map[names.Symbol]names.LockInterface),
-		wrLock:   sync.RWMutex{},
+		wrLock:      sync.RWMutex{},
 		lockCreator: lockCreator,
 	}
 }
@@ -39,7 +39,7 @@ func (m *LockManager) RetrieveLock(config names.TradeConfig) names.LockInterface
 func (m *LockManager) RemoveLock(lock names.LockInterface) bool {
 	var exist bool
 	for _, l := range m.locks {
-		if l == lock  {
+		if l == lock {
 			exist = true
 			break
 		}
@@ -76,6 +76,7 @@ func (m *LockManager) BestMatureLock() names.LockInterface {
 		}
 	}
 	m.wrLock.RUnlock()
+
 	if m.prioritySide != "" {
 		priority, exist := highest[m.prioritySide]
 		if exist {
@@ -151,8 +152,46 @@ func tradePricePercentChange(config names.TradeConfig, price, pretradePrice floa
 	return helper.GrowthPercent(price, pretradePrice)
 }
 
+// func logLock(lock names.LockInterface) {
+// 	state := lock.GetLockState()
+// 	symbol := state.TradeConfig.Symbol
+// 	pretradePrice := state.PretradePrice
+// 	spotPrice := state.Price
+// 	side := state.TradeConfig.Side
+// 	log := fmt.Sprintf(
+// 		"\n== Locking %f %s %s ==\n"+
+// 			"Locked Gains          : %f\n"+
+// 			"Stop Loss             : %f\n"+
+// 			"Pretrade Price        : %f\n"+
+// 			"Price                 : %f\n"+
+// 			"Redemption Due        : %t\n"+
+// 			"Redemption Candidate  : %t\n"+
+// 			"Minimum Lock Unit     : %f\n"+
+// 			"Price Change          : %f\n",
+// 		"Pre-fees Gains        : %s",
+// 		spotPrice,
+// 		side.String(),
+// 		symbol,
+// 		state.AccrudGains,
+// 		state.StopLoss,
+// 		pretradePrice,
+// 		spotPrice,
+// 		state.IsRedemptionIsDue,
+// 		state.IsRedemptionCandidate,
+// 		state.MinimumLockUnit,
+// 		state.AbsoluteGrowth,
+// 		symbol.Gains(pretradePrice, spotPrice, side),
+// 	)
+// 	utils.LogInfo(log)
+// }
+
 func logLock(lock names.LockInterface) {
 	state := lock.GetLockState()
+	config := state.TradeConfig
+	symbol := config.Symbol
+	pretradePrice := state.PretradePrice
+	spotPrice := state.Price
+	side := config.Side
 	log := fmt.Sprintf(
 		"\n== Locking %f %s %s ==\n"+
 			"Locked Gains          : %f\n"+
@@ -162,18 +201,34 @@ func logLock(lock names.LockInterface) {
 			"Redemption Due        : %t\n"+
 			"Redemption Candidate  : %t\n"+
 			"Minimum Lock Unit     : %f\n"+
-			"Price change          : %f\n",
-		state.Price,
-		state.TradeConfig.Side.String(),
-		state.TradeConfig.Symbol,
+			"Price Change          : %f\n"+
+			"Gains                 : %s\n",
+		spotPrice,
+		symbol.String(),
+		side.String(),
 		state.AccrudGains,
-		state.StopLoss,
-		state.PretradePrice,
-		state.Price,
+		state.StopLimit,
+		pretradePrice,
+		spotPrice,
 		state.IsRedemptionIsDue,
 		state.IsRedemptionCandidate,
 		state.MinimumLockUnit,
 		state.AbsoluteGrowth,
+		symbol.Gains(pretradePrice, spotPrice, side),
 	)
+	deviationSpotLimit := 0.0
+	if side == names.TradeSideBuy && config.Buy.DeviationSync.Delta != 0 {
+		devationValue := helper.GetValueOfPercent(pretradePrice, config.Buy.DeviationSync.Delta)
+		// In Buy if the price increase to this point
+		deviationSpotLimit = pretradePrice + devationValue
+	}
+	if side == names.TradeSideSell && config.Sell.DeviationSync.Delta != 0 {
+		devationValue := helper.GetValueOfPercent(pretradePrice, config.Buy.DeviationSync.Delta)
+		// In Buy if the price increase to this point
+		deviationSpotLimit = pretradePrice - devationValue
+	}
+	if deviationSpotLimit != 0 {
+		log = log + fmt.Sprintf("Deviation Trigger     : %f\n", deviationSpotLimit)
+	}
 	utils.LogInfo(log)
 }

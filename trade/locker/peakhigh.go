@@ -55,7 +55,7 @@ func (lock *peakHigh) GetLockedPrice() float64 {
 // GetLockState returns the current state of the lock.
 func (lock *peakHigh) GetLockState() names.LockState {
 	return names.LockState{
-		StopLoss:                    lock.GetTradeLimit(),
+		StopLimit:                   lock.GetTradeLimit(),
 		LockOwner:                   lock.lockManager,
 		AccrudGains:                 lock.gainsAccrude,
 		TradeConfig:                 lock.tradeConfig,

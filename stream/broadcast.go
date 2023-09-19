@@ -86,18 +86,19 @@ func (ps *Broadcaster) Subscribe(config names.TradeConfig) Subscription {
 		broadcast:   ps,
 	}
 
-	ps.lock.Lock()
-
+	ps.lock.RLock()
 	for _, sub := range ps.subscribers {
 		if sub.tradeConfig == config {
 			return sub
 		}
 	}
+	ps.lock.RUnlock()
 
+	ps.lock.Lock()
 	ps.subscribers[config] = subscriber
-	ps.readerReport(ps.subscribers)
 	ps.lock.Unlock()
 
+	ps.readerReport(ps.subscribers)
 	fmt.Printf("Broadcast has subscribed to %s %s\n", config.Symbol, config.Side)
 	return subscriber
 }
@@ -127,8 +128,8 @@ func (ps *Broadcaster) UnsubscribeList(list []Subscription) {
 }
 
 func (ps *Broadcaster) publish(symbol string, symbolData SymbolPriceData) {
-	ps.lock.Lock()
-	defer ps.lock.Unlock()
+	ps.lock.RLock()
+	defer ps.lock.RUnlock()
 	for _, sub := range ps.subscribers {
 		if sub.tradeConfig.Symbol.String() != symbol {
 			continue

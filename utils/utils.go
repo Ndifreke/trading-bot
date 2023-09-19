@@ -27,9 +27,21 @@ func (e env) GetEnv() bool {
 func (e env) SellTrue() bool {
 	return len(os.Getenv("ALWAY_SELL")) > 0
 }
+func (e env) SetModeTest() {
+	os.Setenv("ENV", "test")
+}
 
 func Env() env {
 	return "env"
+}
+
+func (e env) QUOTE_BALANCE() float64 {
+	quoteBalance := os.Getenv("QUOTEST_BALANCE")
+	balance, err := strconv.ParseFloat(quoteBalance, 64)
+	if err != nil {
+		return 666
+	}
+	return balance
 }
 
 func (e env) RandomNumber() float64 {
@@ -42,6 +54,14 @@ func (e env) RandomNumber() float64 {
 	if minError != nil {
 		min = 0
 	}
+
+	if true {
+		return RandomNumber(min, max)
+	}
 	v := rand.Intn(int(max)-int(min)) + int(min)
 	return float64(v)
+}
+
+func RandomNumber(min, max float64) float64 {
+	return min + rand.Float64()*(max-min)
 }

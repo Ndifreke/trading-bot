@@ -11,8 +11,8 @@ var sellConfigPercent = names.TradeConfig{
 	Symbol: "BTCUSD",
 	Side:   names.TradeSideSell,
 	Sell: names.SideConfig{
-		RateLimit: 3,
-		RateType:  names.RatePercent,
+		StopLimit: 3,
+		LimitType: names.RatePercent,
 		Quantity:  2,
 		LockDelta: 10,
 	},
@@ -22,8 +22,8 @@ var sellConfigFixed = names.TradeConfig{
 	Symbol: "BTCUSD",
 	Side:   names.TradeSideSell,
 	Sell: names.SideConfig{
-		RateLimit: 55,
-		RateType:  names.RateFixed,
+		StopLimit: 55,
+		LimitType: names.RateFixed,
 		Quantity:  2,
 		LockDelta: 10,
 	},
@@ -33,8 +33,8 @@ var buyConfigPercent = names.TradeConfig{
 	Symbol: "ETHUSDC",
 	Side:   names.TradeSideBuy,
 	Buy: names.SideConfig{
-		RateLimit: 5,
-		RateType:  names.RatePercent,
+		StopLimit: 5,
+		LimitType: names.RatePercent,
 		Quantity:  2,
 		LockDelta: 2,
 	},
@@ -44,8 +44,8 @@ var buyConfigFixed = names.TradeConfig{
 	Symbol: "ETHUSDC",
 	Side:   names.TradeSideBuy,
 	Buy: names.SideConfig{
-		RateLimit: 5,
-		RateType:  names.RateFixed,
+		StopLimit: 5,
+		LimitType: names.RateFixed,
 		Quantity:  2,
 		LockDelta: 2,
 	},
@@ -65,6 +65,6 @@ func TestCalculateTradePrice(t *testing.T) {
 	assert.EqualValues(t, buyPercentPrice.Percent, 5, "calclulate buy percentage price from percentage rateLimit")
 
 	buyFixedPrice := CalculateTradePrice(buyConfigFixed, 50)
-	assert.EqualValues(t, buyFixedPrice.Limit, buyConfigFixed.Buy.RateLimit, "calclulate sell fixed price fixed rateLimit")
+	assert.EqualValues(t, buyFixedPrice.Limit, buyConfigFixed.Buy.StopLimit, "calclulate sell fixed price fixed rateLimit")
 	assert.EqualValues(t, buyFixedPrice.Percent, 90, "calclulate sell percent price from fixed rateLimit")
 }
