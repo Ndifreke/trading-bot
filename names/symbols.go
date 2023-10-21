@@ -2,11 +2,12 @@ package names
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"trading/binance"
 
-	binanceLib "github.com/adshao/go-binance/v2"
+	binLib "github.com/adshao/go-binance/v2"
 )
 
 type Symbol string
@@ -22,47 +23,44 @@ func (tp TradingPair) String() Symbol {
 
 // ParseTradingPair parses a trading pair string into a TradingPair struct.
 func (s Symbol) ParseTradingPair() TradingPair {
-	return GetSymbols().ToPair(s.String())
+	return GetStoredInfo().ToPair(s.String())
 }
 
 func (s Symbol) String() string {
 	return string(s)
 }
 
+func (s Symbol) Gains(pretradeValue, spotValue float64, side TradeSide) string {
+	sellGains := spotValue - pretradeValue
+	if side == TradeSideBuy && sellGains <= math.MinInt64 {
+		sellGains = math.Copysign(sellGains, 1)
+	}
+	return s.FormatQuotePrice(sellGains)
+}
+
 // FormatBasePrice formats a price as a string with the base currency symbol.
 func (s Symbol) FormatBasePrice(price float64) string {
 	baseSymbol := s.ParseTradingPair().Base
-	return fmt.Sprintf("%f %s", price, baseSymbol)
+	return fmt.Sprintf("%f%s", price, baseSymbol)
 }
 
 // FormatQuotePrice formats a price as a string with the quote currency symbol.
 func (s Symbol) FormatQuotePrice(price float64) string {
 	quoteSymbol := s.ParseTradingPair().Quote
-	return fmt.Sprintf("%f %s", price, quoteSymbol)
+	return fmt.Sprintf("%f%s", price, quoteSymbol)
 }
 
-type symbols struct {
-	symbols []binanceLib.Symbol
+type SymbolInfo struct {
+	symbols []binLib.Symbol
 }
 
-// var exchangeInfo *binanceLib.ExchangeInfo
-// func GetSymbols() symbols {
-// 	return symbols{
-// 		symbols: getExchangeInfo().Symbols,
-// 	}
-// }
+func NewSymbolInfo(symbols []binLib.Symbol) SymbolInfo {
+	return SymbolInfo{symbols}
+}
 
-// func getExchangeInfo() *binanceLib.ExchangeInfo {
-// 	if exchangeInfo == nil {
-// 		exchangeInfo = binance.GetExchangeInfo2()
-// 		return exchangeInfo
-// 	}
-// 	return exchangeInfo
-// }
-
-func GetSymbols() symbols {
-	return symbols{
-		symbols: binance.LoadExchangeInfo().Symbols,
+func GetStoredInfo() SymbolInfo {
+	return SymbolInfo{
+		symbols: binance.LoadStoredExchangeInfo().Symbols,
 	}
 }
 
@@ -71,7 +69,7 @@ type SymbolPrecision struct {
 	Base  int
 }
 
-func (smb symbols) PreciseValue(symbol string, value float64) float64 {
+func (smb SymbolInfo) PreciseValue(symbol string, value float64) float64 {
 	countDecimalPlaces := func(number float64) int {
 		parts := strings.Split(strconv.FormatFloat(number, 'f', -1, 64), ".")
 		if len(parts) > 1 {
@@ -92,7 +90,7 @@ func (smb symbols) PreciseValue(symbol string, value float64) float64 {
 	return m
 }
 
-func (smb symbols) ToPair(symbol string) TradingPair {
+func (smb SymbolInfo) ToPair(symbol string) TradingPair {
 	for _, s := range smb.symbols {
 		if s.Symbol == symbol {
 			return TradingPair{
@@ -104,7 +102,7 @@ func (smb symbols) ToPair(symbol string) TradingPair {
 	return TradingPair{}
 }
 
-func (smb symbols) List() []string {
+func (smb SymbolInfo) List() []string {
 	var list []string
 	for _, s := range smb.symbols {
 		list = append(list, s.Symbol)

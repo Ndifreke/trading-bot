@@ -38,6 +38,11 @@ func (tm *TradeManager) UseLockCreator(lockCreator names.LockCreatorFunc) *Trade
 
 func (tm *TradeManager) DoTrade() *TradeManager {
 
+	if tm.trader == nil {
+		utils.LogWarn("no trader registered with trade manager")
+		return tm
+	}
+
 	lockManager := locker.NewLockManager(tm.lockCreator)
 	if tm.prioritySide != "" {
 		if !helper.SideIsValid(tm.prioritySide) {

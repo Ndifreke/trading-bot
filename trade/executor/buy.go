@@ -2,6 +2,7 @@ package executor
 
 import (
 	"fmt"
+	// "time"
 	tradeBinance "trading/binance"
 	"trading/helper"
 	"trading/names"
@@ -46,7 +47,7 @@ func buy(exec *buyExecutor) bool {
 	preciseQuantity := exec.config.Sell.Quantity
 
 	if preciseQuantity <= 0 {
-		preciseQuantity = names.GetSymbols().PreciseValue(exec.config.Symbol.String(), quoteBalance.Locked/exec.marketPrice)
+		preciseQuantity = names.GetStoredInfo().PreciseValue(exec.config.Symbol.String(), quoteBalance.Locked/exec.marketPrice)
 	}
 
 	buyOrder := &binance.CreateOrderResponse{}
@@ -96,6 +97,11 @@ func buy(exec *buyExecutor) bool {
 func (exec *buyExecutor) Execute() bool {
 	exec.fees = helper.GetTradeFee(exec.config, exec.marketPrice)
 
-	sold := buy(exec)
-	return sold
+	bought := buy(exec)
+	if bought {
+		// Pause for 1 second for the server executing server to complete the order
+		// TODO it would be nice to recursive check if this is filled
+		// time.Sleep(10 * time.Second)
+	}
+	return bought
 }

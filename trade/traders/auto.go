@@ -1,5 +1,6 @@
 package traders
 
+//Always force trades with percentage
 import (
 	"fmt"
 	"trading/binance"
@@ -170,11 +171,9 @@ func (trader *autoTrader) Watch(config names.TradeConfig) {
 }
 
 func NewAutoTrade(configs []names.TradeConfig, datapoints int, interval string) *manager.TradeManager {
-	preparedConfig := tradeConfigsAutoPrepare(configs, interval, datapoints)
+	preparedConfig := alignStopWithGraph(configs, interval, datapoints)
 	autoTrader := getAutoTrader(preparedConfig)
 	autoTrader.datapoints = datapoints
 	autoTrader.interval = interval
 	return manager.NewTradeManager(autoTrader)
 }
-
-

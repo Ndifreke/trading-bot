@@ -169,7 +169,7 @@ func (g Graph) GetPriceMidpoint() float64 {
 *
 */
 func NewBinanceGraph(symbol, interval /*1m for optimal*/ string, pointsLimit int /*15 for optimal*/) *Graph {
-return  NewGraph(kline.NewKline(symbol, interval, pointsLimit))
+	return NewGraph(kline.NewKline(symbol, interval, pointsLimit))
 }
 
 func (graph Graph) DetermineTrend() TrendType {
@@ -229,7 +229,7 @@ func (graph *Graph) SaveToFile(filename string) error {
 	}
 
 	err = ioutil.WriteFile("./ui/src/dump/kline.json", data, 0644)
-	
+
 	if err != nil {
 		return err
 	}
@@ -358,7 +358,7 @@ func (graph *Graph) GetTrendPullForce() TrendPullForce {
 		BullPull:         Bulltrend,
 		BearPull:         Beartrend,
 		Sentiment:        Sentiment,
-		SentimentPercent: helper.GrowthPercent(max, min),
+		SentimentPercent: helper.CalculatePercentageChange(max, min),
 	}
 }
 

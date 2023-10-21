@@ -2,7 +2,6 @@ package traders
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"trading/binance"
 	"trading/helper"
 	"trading/names"
@@ -10,6 +9,8 @@ import (
 	"trading/trade/deviation"
 	"trading/trade/manager"
 	"trading/utils"
+
+	"github.com/google/uuid"
 )
 
 type limitTrader struct {
@@ -42,7 +43,7 @@ func getLimitTrader(tradeConfigs []names.TradeConfig) names.Trader {
 }
 
 func isInvalidSide(side names.SideConfig) bool {
-	return side.RateType == "" || side.Quantity == 0 || side.RateLimit == 0
+	return side.LimitType == "" || side.Quantity == 0 || side.StopLimit == 0
 }
 
 func (t *limitTrader) Run() {

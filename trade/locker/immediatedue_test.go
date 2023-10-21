@@ -15,8 +15,8 @@ func TestFreeLockSellBuy(t *testing.T) {
 		Symbol: "BTCUSD",
 		Side:   names.TradeSideBuy,
 		Buy: names.SideConfig{
-			RateLimit: 20,
-			RateType:  names.RateFixed,
+			StopLimit: 20,
+			LimitType: names.RateFixed,
 			Quantity:  2,
 			LockDelta: 10,
 		},
@@ -25,8 +25,8 @@ func TestFreeLockSellBuy(t *testing.T) {
 		Symbol: "ETHUSDC",
 		Side:   names.TradeSideBuy,
 		Buy: names.SideConfig{
-			RateLimit: 5,
-			RateType:  names.RateFixed,
+			StopLimit: 5,
+			LimitType: names.RateFixed,
 			Quantity:  2,
 			LockDelta: 2,
 		},
@@ -74,8 +74,8 @@ func TestFreeLockSellBuy(t *testing.T) {
 		Symbol: "BNBBUSD",
 		Side:   names.TradeSideBuy,
 		Buy: names.SideConfig{
-			RateLimit: 2,
-			RateType:  names.RatePercent,
+			StopLimit: 2,
+			LimitType: names.RatePercent,
 			Quantity:  0,
 			LockDelta: 1,
 		},
