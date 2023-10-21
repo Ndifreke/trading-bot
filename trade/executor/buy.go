@@ -2,6 +2,7 @@ package executor
 
 import (
 	"fmt"
+	// "time"
 	tradeBinance "trading/binance"
 	"trading/helper"
 	"trading/names"
@@ -46,24 +47,40 @@ func buy(exec *buyExecutor) bool {
 	preciseQuantity := exec.config.Sell.Quantity
 
 	if preciseQuantity <= 0 {
-		preciseQuantity = names.GetSymbols().PreciseValue(exec.config.Symbol.String(), quoteBalance.Locked/exec.marketPrice)
+		preciseQuantity = names.GetStoredInfo().PreciseValue(exec.config.Symbol.String(), quoteBalance.Locked/exec.marketPrice)
 	}
 
 	buyOrder := &binance.CreateOrderResponse{}
 
-	if !utils.Env().IsTest() {
-		var err error
-		buyOrder, err = tradeBinance.CreateBuyMarketOrder(
-			exec.config.Symbol.String(),
-			preciseQuantity,
+	if utils.Env().IsTest() {
+		summary(
+			exec.config,
+			exec.config.Side,
+			exec.config.Symbol,
+			lastTradePrice,
+			exec.tradeStartPrice,
+			exec.marketPrice,
+			exec.marketPrice-lastTradePrice,
+			exec.fees,
+			exec.config.Buy.Quantity,
+			*buyOrder,
 		)
-		if err != nil {
-			utils.LogError(err, fmt.Sprintf("Error  Buying %s, Qty=%f Balance=%f", exec.config.Symbol, preciseQuantity, quoteBalance.Locked))
-			return false
-		}
+		return utils.Env().SellTrue()
 	}
-	fmt.Println(buyOrder)
+
+	var err error
+	buyOrder, err = tradeBinance.CreateBuyMarketOrder(
+		exec.config.Symbol.String(),
+		preciseQuantity,
+	)
+
+	if err != nil {
+		utils.LogError(err, fmt.Sprintf("Error  Buying %s, Qty=%f Balance=%f", exec.config.Symbol, preciseQuantity, quoteBalance.Locked))
+		return false
+	}
+
 	summary(
+		exec.config,
 		exec.config.Side,
 		exec.config.Symbol,
 		lastTradePrice,
@@ -80,10 +97,11 @@ func buy(exec *buyExecutor) bool {
 func (exec *buyExecutor) Execute() bool {
 	exec.fees = helper.GetTradeFee(exec.config, exec.marketPrice)
 
-	// if !exec.IsProfitable() {
-	// 	// Dont buy if user wanted to make profit by force
-	// 	return false
-	// }
-	sold := buy(exec)
-	return sold
+	bought := buy(exec)
+	if bought {
+		// Pause for 1 second for the server executing server to complete the order
+		// TODO it would be nice to recursive check if this is filled
+		// time.Sleep(10 * time.Second)
+	}
+	return bought
 }

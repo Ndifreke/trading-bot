@@ -2,6 +2,7 @@ package executor
 
 import (
 	"fmt"
+	// "time"
 	tradeBinance "trading/binance"
 	"trading/helper"
 	"trading/names"
@@ -43,23 +44,39 @@ func sell(st *sellExecutor) bool {
 
 	preciseQuantity := st.config.Sell.Quantity
 	if preciseQuantity <= 0 {
-		preciseQuantity = names.GetSymbols().PreciseValue(st.config.Symbol.String(), baseBalance.Locked)
+		preciseQuantity = names.GetStoredInfo().PreciseValue(st.config.Symbol.String(), baseBalance.Locked)
 	}
 
 	sellOrder := &binance.CreateOrderResponse{}
 
-	if !utils.Env().IsTest() {
-		var err error
-		sellOrder, err = tradeBinance.CreateSellMarketOrder(
-			st.config.Symbol.String(),
-			preciseQuantity,
+	if utils.Env().IsTest() {
+		summary(
+			st.config,
+			st.config.Side,
+			st.config.Symbol,
+			lastTradePrice,
+			st.tradeStartPrice,
+			st.marketPrice,
+			st.marketPrice-lastTradePrice,
+			st.fees,
+			st.config.Sell.Quantity,
+			*sellOrder,
 		)
-		if err != nil {
-			utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, preciseQuantity, baseBalance.Locked))
-			return false
-		}
+		return true
+	}
+
+	var err error
+	sellOrder, err = tradeBinance.CreateSellMarketOrder(
+		st.config.Symbol.String(),
+		preciseQuantity,
+	)
+
+	if err != nil {
+		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, preciseQuantity, baseBalance.Locked))
+		return false
 	}
 	summary(
+		st.config,
 		st.config.Side,
 		st.config.Symbol,
 		lastTradePrice,
@@ -74,12 +91,11 @@ func sell(st *sellExecutor) bool {
 }
 
 func (exec *sellExecutor) Execute() bool {
-
-	// exec.fees = helper.GetTradeFee(exec.config, exec.marketPrice)
-	// if !exec.IsProfitable() {
-	// 	// Dont Sell if user wanted to make profit by force
-	// 	return false
-	// }
-	return sell(exec)
-
+	sold := sell(exec)
+	if sold {
+		// Pause for 1 second for the server executing server to complete the order
+		// TODO it would be nice to recursive check if this is filled
+		// time.Sleep(10 * time.Second)
+	}
+	return sold
 }

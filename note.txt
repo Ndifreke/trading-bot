@@ -1,0 +1,29 @@
+GMXUSDT := names.TradeConfig{
+		Symbol:    "CRVUSDT",
+		Side:      names.TradeSideSell,
+		IsCyclick: true,
+		Buy: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  2,
+			LockDelta:  50,
+			Quantity:   names.MAX_LIMIT,
+			DeviationSync: names.DeviationSync{
+				Delta: 95,
+			},
+		},
+		Sell: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  2,
+			LockDelta:  50,
+			Quantity:   names.MAX_LIMIT,
+			DeviationSync: names.DeviationSync{
+				Delta: 90,
+			},
+		},
+	}
+
+
+traders.NewPeggedBestSide(peggedBestConfigs, names.TradeSideSell, traders.StatusFullfilment, peggedBestConfigs[0]).DoTrade()
+//it should use 90 of sell as delta since peggedBestConfigs[0]

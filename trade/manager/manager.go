@@ -18,7 +18,7 @@ type TradeManager struct {
 func NewTradeManager(trader names.Trader) *TradeManager {
 	return &TradeManager{
 		trader:       trader,
-		lockCreator:  locker.HighLockCreator,
+		lockCreator:  locker.PeakHighLockCreator,
 		prioritySide: names.TradeSideSell,
 	}
 }
@@ -37,6 +37,11 @@ func (tm *TradeManager) UseLockCreator(lockCreator names.LockCreatorFunc) *Trade
 }
 
 func (tm *TradeManager) DoTrade() *TradeManager {
+
+	if tm.trader == nil {
+		utils.LogWarn("no trader registered with trade manager")
+		return tm
+	}
 
 	lockManager := locker.NewLockManager(tm.lockCreator)
 	if tm.prioritySide != "" {

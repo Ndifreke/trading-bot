@@ -77,10 +77,6 @@ func (g *Graph) IsDowntrend() bool {
 	return midPoint <= downtrendCeiling && midPoint >= dipLowPrice
 }
 
-// func (g Graph) M() string {
-// 	return ""
-// }
-
 // GetAveragePrice + for up - for down starting from center
 func (g *Graph) GetAveragePrice() float64 {
 	kLineData := g.getKLineData()
@@ -233,7 +229,7 @@ func (graph *Graph) SaveToFile(filename string) error {
 	}
 
 	err = ioutil.WriteFile("./ui/src/dump/kline.json", data, 0644)
-	
+
 	if err != nil {
 		return err
 	}
@@ -362,7 +358,7 @@ func (graph *Graph) GetTrendPullForce() TrendPullForce {
 		BullPull:         Bulltrend,
 		BearPull:         Beartrend,
 		Sentiment:        Sentiment,
-		SentimentPercent: helper.GrowthPercent(max, min),
+		SentimentPercent: helper.CalculatePercentageChange(max, min),
 	}
 }
 

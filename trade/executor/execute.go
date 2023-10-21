@@ -23,11 +23,11 @@ type executorType struct {
 }
 
 
-func summary(action names.TradeSide, symbol names.Symbol, marketPrice, tradeStartPrice, currentPrice, profit float64, fee helper.TradeFee, quantity float64, order binance.CreateOrderResponse) string {
+func summary(config names.TradeConfig, action names.TradeSide, symbol names.Symbol, marketPrice, tradeStartPrice, currentPrice, profit float64, fee helper.TradeFee, quantity float64, order binance.CreateOrderResponse) string {
 
 	sm := fmt.Sprintf(
 		`
-===== %s TRADE SUMMARY =====
+===== %s TRADE SUMMARY %s=====
 Symbol            : %s
 Last Trade Price  : %s
 Started Trade     : %s
@@ -41,6 +41,7 @@ Status            : %s
 Time              : %s
 `,
 		action.String(),
+		config.Symbol.String(),
 		order.Symbol,
 		symbol.FormatQuotePrice(marketPrice),
 		symbol.FormatQuotePrice(tradeStartPrice),

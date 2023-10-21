@@ -1,22 +1,32 @@
 package user
 
 import (
-	"os"
+	// "os"
 	"strconv"
-	"trading/binance"
+	binanceLib "trading/binance"
+	"trading/utils"
+
+	binance "github.com/adshao/go-binance/v2"
 )
+
+type Accounter interface {
+	GetBalance(asset string) Balance
+	Account() *binance.Account
+}
 
 type Account struct {
 	balances map[string]Balance
+	account  *binance.Account
 }
 
 func GetAccount() *Account {
-	if os.Getenv("ENV") == "TEST" {
-		return getMockAccount()
+	if utils.Env().IsTest() {
+		return GetMockAccount(mockAccount)
 	}
-	
+
 	bals := map[string]Balance{}
-	for _, b := range binance.GetBinanceAccount().Balances {
+	account := binanceLib.GetBinanceAccount()
+	for _, b := range account.Balances {
 		Locked, _ := strconv.ParseFloat(b.Locked, 64)
 		Free, _ := strconv.ParseFloat(b.Free, 64)
 		Asset := b.Asset
@@ -26,9 +36,14 @@ func GetAccount() *Account {
 	}
 	return &Account{
 		balances: bals,
+		account:  account,
 	}
 }
 
-func (account *Account) GetBalance(id string) Balance {
-	return account.balances[id]
+func (account *Account) GetBalance(asset string) Balance {
+	return account.balances[asset]
+}
+
+func (account *Account) Account() *binance.Account {
+	return account.account
 }

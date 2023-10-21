@@ -7,19 +7,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var uptrendPullupData = []kline.KlineData{
-	{Open: 15.0, Close: 10.0, High: 40.0, Low: 5.0},
-}
 
 
 func TestTradeLocker(t *testing.T) {
 
-	upGraph := NewGraph(kline.GetKLineMock(uptrendPullupData))
+	upGraph := NewGraph(kline.GetKLineMock(kline.MockKLinePullUpData))
 	assert.Equal(t, upGraph.GetCandleSpikePull().Sentiment, Bull)
 	assert.Equal(t, upGraph.GetCandleSpikePull().BullPull, 25.0)
 	assert.Equal(t, upGraph.GetCandleSpikePull().BearPull, 5.0)
 
-	downGraph := NewGraph(kline.GetKLineMock(MockDowntrendPullupData))
+	downGraph := NewGraph(kline.GetKLineMock(kline.MockKLineData))
 	assert.Equal(t, downGraph.GetCandleSpikePull().Sentiment, Bear)
 	assert.Equal(t, downGraph.GetCandleSpikePull().BullPull, 2.0)
 	assert.Equal(t, downGraph.GetCandleSpikePull().BearPull, 5.0)

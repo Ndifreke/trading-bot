@@ -8,16 +8,13 @@ import (
 	// "github.com/davecgh/go-spew/spew"
 	"github.com/joho/godotenv"
 
-	// "trading/user"
-	"trading/trade/auto"
-	bestside "trading/trade/bestbuy"
-	detection "trading/trade/graph"
-	"trading/trade/limit"
+	"trading/trade/graph"
+	"trading/trade/traders"
 )
 
 func init() {
 	godotenv.Load()
-	binance.LoadExchangeInfo()
+	binance.LoadStoredExchangeInfo()
 }
 
 func main() {
@@ -47,14 +44,14 @@ func main() {
 		IsCyclick: true,
 
 		Sell: names.SideConfig{
-			RateLimit:  0,
-			RateType:   names.RatePercent,
+			StopLimit:  0,
+			LimitType:  names.RatePercent,
 			Quantity:   1,
 			MustProfit: true,
 		},
 		Buy: names.SideConfig{
-			RateLimit:  1,
-			RateType:   names.RatePercent,
+			StopLimit:  1,
+			LimitType:  names.RatePercent,
 			Quantity:   1,
 			MustProfit: true,
 		},
@@ -64,13 +61,13 @@ func main() {
 	}
 	config2 := names.TradeConfig{
 		Sell: names.SideConfig{
-			RateLimit: 0,
-			RateType:  names.RatePercent,
+			StopLimit: 0,
+			LimitType: names.RatePercent,
 			Quantity:  200,
 		},
 		Buy: names.SideConfig{
-			RateLimit: 99,
-			RateType:  names.RatePercent,
+			StopLimit: 99,
+			LimitType: names.RatePercent,
 			Quantity:  1,
 		},
 		Symbol: "BTCBUSD",
@@ -78,55 +75,55 @@ func main() {
 	}
 	a, b := names.Symbol("BNBBUSD"), names.Symbol("BTCUSDT")
 	unused(b, a)
-	v := a
-	g := detection.NewBinanceGraph(v.String(), "15m", 8)
+	v := "LTCUSDT"
+	g := graph.NewBinanceGraph(v, "15m", 8)
 
 	g.SaveToFile("")
 
 	config3 := names.TradeConfig{
-		Symbol:   "DIAUSDT",
+		Symbol:    "DIAUSDT",
 		Side:      names.TradeSideSell,
 		IsCyclick: true,
 		Sell: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  2,
+			LimitType:  names.RatePercent,
+			StopLimit:  1,
 			LockDelta:  0.4,
 			Quantity:   -1,
-			Deviation: names.SideConfigDeviation{
-				SwitchSide: true,
-				Threshold:  0.00034,
+			DeviationSync: names.DeviationSync{
+				FlipSide: true,
+				Delta:    0.00034,
 			},
 		},
 		Buy: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  2,
+			LimitType:  names.RatePercent,
+			StopLimit:  1,
 			LockDelta:  0.4,
 			Quantity:   -1,
-			Deviation: names.SideConfigDeviation{
-				SwitchSide: true,
-				Threshold:  0.00034,
+			DeviationSync: names.DeviationSync{
+				FlipSide: true,
+				Delta:    0.00034,
 			},
 		},
 	}
 
 	config4 := names.TradeConfig{
-IsCyclick:  true,
+		IsCyclick: true,
 
-		Symbol:    "BTCBUSD",
-		Side:      names.TradeSideBuy,
+		Symbol: "BTCBUSD",
+		Side:   names.TradeSideBuy,
 		Sell: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  0.9,
+			LimitType:  names.RateFixed,
+			StopLimit:  50,
 			LockDelta:  0.1,
 			Quantity:   0.54,
 		},
 		Buy: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  0.5,
+			LimitType:  names.RateFixed,
+			StopLimit:  50,
 			LockDelta:  0.1,
 			Quantity:   100,
 		},
@@ -144,41 +141,201 @@ IsCyclick:  true,
 		IsCyclick: !true,
 		Buy: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  10,
+			LimitType:  names.RateFixed,
+			StopLimit:  10,
 			LockDelta:  10,
 			Quantity:   -3,
 		},
 		Sell: names.SideConfig{
 			MustProfit: true,
-			RateType:   names.RatePercent,
-			RateLimit:  90.5,
+			LimitType:  names.RateFixed,
+			StopLimit:  50,
 			LockDelta:  0.1,
 			Quantity:   100,
 		},
 	}
-	// auto.NewAutoTrade([]names.TradeConfig{autoConfig, config4}, 8, "15m").DoTrade()
+	// traders.NewLimitTrade([]names.TradeConfig{autoConfig, config4}).DoTrade()
 	bestConfigs := []names.TradeConfig{config3, config}
 
 	//  bestside.NewBestSideTrade(bestConfigs, 12, "15m", names.TradeSideSell, bestside.StatusContention, names.TradeConfig{}).DoTrade()
 	j := []names.TradeConfig{config3, config4, config2, autoConfig}
-	x := []names.TradeConfig{
-		// config3,
-		config4,
-	}
+	// x := []names.TradeConfig{
+	// 	// config3,
+	// 	config4,
+	// }
 	// y := []names.TradeConfig{config4}
 	// limit.NewLimitTrade(j).DoTrade()
-	limit.NewLimitTrade(x).DoTrade()
-	autoBestConfig := []string{"BNBUSDT", "XRPUSDT", "SOLUSDT", "TROYUSDT", "ETHUSDT", "BTCUSDT", "SOLUSDT", "AVAXUSDT"}
-	// bestside.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, bestside.StatusContention, autoBestConfig[0]).DoTrade()
+	// traders.NewLimitTrade(x).DoTrade()
+	// autoBestConfig := []string{"BNBUSDT", "XRPUSDT", "SOLUSDT", "TROYUSDT", "ETHUSDT", "BTCUSDT", "SOLUSDT", "AVAXUSDT"}
 	unused(bestConfigs)
-	unused(autoBestConfig)
-	unused(bestside.NewBestSideTrade)
-	unused(j)
-	unused(limit.NewLimitTrade)
-	unused(auto.NewAutoTrade)
-	unused(autoConfig)
 
+	autoBestConfig := []string{"BNBUSDT", "ETHUSDT", "BTCUSDT", "PEPEUSDT"}
+	// traders.NewAutoBestSide(autoBestConfig, 12, "15m", names.TradeSideSell, traders.StatusContention, autoBestConfig[0]).DoTrade()
+	unused(autoBestConfig)
+
+	assetGainsConfig := names.TradeConfig{
+		Symbol:    "BNBUSDT",
+		Side:      names.TradeSideSell,
+		IsCyclick: true,
+		Buy: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  1,
+			LockDelta:  10,
+			Quantity:   -1,
+		},
+		Sell: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  1,
+			LockDelta:  20,
+			Quantity:   names.MAX_QUANTITY,
+		},
+	}
+	// traders.NewPeggedLimit([]names.TradeConfig{assetGainsConfig}).DoTrade()
+
+	unused(traders.NewBestSideTrade)
+	unused(j)
+
+	BNBUSDT := names.TradeConfig{
+		Symbol:    "BNBUSDT",
+		Side:      names.TradeSideSell,
+		IsCyclick: true,
+		Buy: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  90,
+			LockDelta:  20,
+			Quantity:   -1,
+		},
+		Sell: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			StopLimit:  9,
+			LockDelta:  30,
+			Quantity:   -1,
+		},
+	}
+
+	// XRPUSDT := names.TradeConfig{
+	// 	Symbol:    "XRPUSDT",
+	// 	Side:      names.TradeSideSell,
+	// 	IsCyclick: true,
+	// 	Buy: names.SideConfig{
+	// 		MustProfit: true,
+	// 		RateType:   names.RatePercent,
+	// 		RateLimit:  2,
+	// 		LockDelta:  30,
+	// 		Quantity:   -1,
+	// 	},
+	// 	Sell: names.SideConfig{
+	// 		MustProfit: true,
+	// 		RateType:   names.RatePercent,
+	// 		RateLimit:  2,
+	// 		LockDelta:  30,
+	// 		Quantity:   -1,
+	// 	},
+	// }
+
+	// AMPUSDT := names.TradeConfig{
+	// 	Symbol:    "AMPUSDT",
+	// 	Side:      names.TradeSideSell,
+	// 	IsCyclick: true,
+	// 	Buy: names.SideConfig{
+	// 		MustProfit: true,
+	// 		RateType:   names.RatePercent,
+	// 		RateLimit:  2,
+	// 		LockDelta:  30,
+	// 		Quantity:   -1,
+	// 	},
+	// 	Sell: names.SideConfig{
+	// 		MustProfit: true,
+	// 		RateType:   names.RatePercent,
+	// 		RateLimit:  2,
+	// 		LockDelta:  30,
+	// 		Quantity:   -1,
+	// 	},
+	// }
+
+	GMXUSDT := names.TradeConfig{
+		Symbol: "BTCUSDT",
+		// Side:      names.TradeSideBuy,
+		IsCyclick: true,
+		Buy: names.SideConfig{
+			MustProfit:    true,
+			LimitType:     names.RatePercent,
+			StopLimit:     1,
+			LockDelta:     0.2,
+			Quantity:      names.MAX_QUANTITY,
+			DeviationSync: names.DeviationSync{
+				// Delta: 1,
+			},
+		},
+		Sell: names.SideConfig{
+			MustProfit:    true,
+			LimitType:     names.RatePercent,
+			StopLimit:     1,
+			LockDelta:     0.1,
+			Quantity:      names.MAX_QUANTITY,
+			DeviationSync: names.DeviationSync{
+				// Delta: 1,
+			},
+		},
+	}
+	// peggedBestConfigs := []names.TradeConfig{ /*BNBUSDT,XRPUSDT,*/ GMXUSDT /*,AMPUSDT*/}
+	// traders.NewStableBestSide(peggedBestConfigs, names.TradeSideBuy, traders.StatusContention, peggedBestConfigs[0]).DoTrade()
+	// traders.NewStableBestSide_v1(peggedBestConfigs, names.TradeSideSell, traders.StatusContention, peggedBestConfigs[0]).DoTrade()
+
+	// tradeParam := traders.StableTradeParam{
+	// 	QuoteAsset: "USDT",
+	// 	BuyStopLimit: 0.001,
+	// 	BuyDeviationDelta: 0.001,
+	// 	BuyLockDelta: 0.0000001,
+	// 	SellStopLimit: 0.001,
+	// 	SellDeviationDelta: 0.001,
+	// 	SellLockDelta: 0.001,
+	// 	BestSide: names.TradeSideSell,
+	// 	Status: traders.StatusContention,
+	// 	MinPriceChange: 14,
+	// 	MaxPriceChange: 24,
+	// }
+
+	tradeParam := traders.StableTradeParam{
+		QuoteAsset: "USDT",
+		BuyStopLimit: 0.2,
+		BuyDeviationDelta: 1,
+		BuyLockDelta: 0.03,
+		SellStopLimit: 0.1,
+		SellDeviationDelta: 0.5,
+		SellLockDelta: 0.03,
+		BestSide: names.TradeSideSell,
+		Status: traders.StatusContention,
+		MinPriceChange: 3,
+		MaxPriceChange: 11,
+	}
+
+	// tradeParam := traders.StableTradeParam{
+	// 	QuoteAsset:   "USDT",
+	// 	BuyStopLimit: 0.1,
+	// 	// BuyDeviationDelta: 30,
+	// 	BuyLockDelta:       0.0001,
+	// 	SellStopLimit:      0.2,
+	// 	SellDeviationDelta: 0.001,
+	// 	SellLockDelta:      0.03,
+	// 	BestSide:           names.TradeSideSell,
+	// 	Status:             traders.StatusContention,
+	// 	MinPriceChange:     15,
+	// 	MaxPriceChange:     24,
+	// }
+
+	traders.NewAutoStableBestSide(tradeParam).DoTrade()
+
+	unused(traders.NewAutoTrade)
+	unused(autoConfig)
+	unused(v)
+	unused(assetGainsConfig)
+	unused(BNBUSDT)
+	unused(GMXUSDT)
 	wg.Wait()
 }
 

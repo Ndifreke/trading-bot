@@ -2,10 +2,11 @@ package stream
 
 import (
 	"fmt"
+	"github.com/adshao/go-binance/v2"
 	"strconv"
 	"sync"
+	"time"
 	"trading/utils"
-	"github.com/adshao/go-binance/v2"
 )
 
 type Socket struct {
@@ -35,41 +36,66 @@ func NewSocketStream(symbols []string) StreamInterface {
 
 func readSocketDataDispatch(s *Socket) {
 
-	if len(s.bulkReaders) == 0 {
-		utils.LogInfo("<Socket Stream>: No API data reader found")
-	}
+	if utils.Env().IsTest() {
+		go func() {
+			symbolCount := len(s.symbols)
+			for i := 0; i < symbolCount; i++ {
+				go func(i int) {
+					data := SymbolPriceData{Price: utils.Env().RandomNumber(), Symbol: s.symbols[i]}
 
-	errorHandler := func(err error) {
-		if s.failHandler != nil {
-			s.CloseLog(fmt.Sprintf("<Socket Stream>: An Error happened will close and fail over %s", err.Error()))
-			s.failHandler(s)
-		}
-		s.CloseLog(err.Error())
-	}
+					s.lock.RLock()
+					for _, bulkReader := range s.bulkReaders {
+						go bulkReader(s, data)
+					}
+					s.lock.RUnlock()
 
-	messageHandler := func(event *binance.WsMarketStatEvent) {
-		price, _ := strconv.ParseFloat(event.LastPrice, 64)
-		data := SymbolPriceData{Price: price, Symbol: event.Symbol}
-
-		go func(data SymbolPriceData) {
-			for _, bulkReader := range s.bulkReaders {
-				go bulkReader(s, data)
+				}(i)
+				if i+1 == symbolCount {
+					i = -1
+				}
+				time.Sleep(time.Millisecond * 2)
 			}
-		}(data)
+		}()
+	} else {
 
-	}
+		if len(s.bulkReaders) == 0 {
+			utils.LogInfo("<Socket Stream>: No API data reader found")
+		}
 
-	donChannel, stopChannel, err := binance.WsCombinedMarketStatServe(
-		s.symbols,
-		messageHandler,
-		errorHandler,
-	)
+		errorHandler := func(err error) {
+			if s.failHandler != nil {
+				s.CloseLog(fmt.Sprintf("<Socket Stream>: An Error happened will close and fail over %s", err.Error()))
+				s.failHandler(s)
+			}
+			s.CloseLog(err.Error())
+		}
 
-	s.stopChannel = stopChannel
-	s.doneChannel = donChannel
+		messageHandler := func(event *binance.WsMarketStatEvent) {
+			price, _ := strconv.ParseFloat(event.LastPrice, 64)
+			data := SymbolPriceData{Price: price, Symbol: event.Symbol}
 
-	if err != nil {
-		errorHandler(err)
+			go func(data SymbolPriceData) {
+				s.lock.RLock()
+				for _, bulkReader := range s.bulkReaders {
+					go bulkReader(s, data)
+				}
+				s.lock.RUnlock()
+			}(data)
+
+		}
+
+		donChannel, stopChannel, err := binance.WsCombinedMarketStatServe(
+			s.symbols,
+			messageHandler,
+			errorHandler,
+		)
+
+		s.stopChannel = stopChannel
+		s.doneChannel = donChannel
+
+		if err != nil {
+			errorHandler(err)
+		}
 	}
 }
 
