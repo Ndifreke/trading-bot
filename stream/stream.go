@@ -3,9 +3,8 @@ package stream
 import (
 	"fmt"
 	// "trading/constant"
-	"trading/trade/info"
 
-	// "trading/names"
+	"trading/names"
 	"trading/utils"
 )
 
@@ -96,7 +95,7 @@ func (sm *StreamManager) NewStream(symbols []string) StreamInterface {
 
 func (sm *StreamManager) StreamAll() StreamInterface {
 	// return sm.NewStream(constant.SymbolList)
-	v := info.GetNewInfo().SpotableSymbolInfo().List()
+	v := names.GetNewInfo().SpotableSymbolInfo().List()
 	utils.LogWarn(fmt.Sprintf("Loaded %d, only 1090 will be streamed", len(v)))
 	return sm.NewStream(v[0:1090])
 }

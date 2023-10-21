@@ -1,30 +1,47 @@
-package binance
+package names
 
 import (
 	"context"
-	"encoding/json"
 	"strconv"
 	"sync"
-	"trading/constant"
+	"trading/binance"
 	"trading/utils"
 
-	"github.com/adshao/go-binance/v2"
+	binLib "github.com/adshao/go-binance/v2"
 )
 
-func loadInfoString() binance.ExchangeInfo {
-	var exchange binance.ExchangeInfo
-	json.Unmarshal([]byte(constant.ExchangeInfo), &exchange)
-	return exchange
+type SymbolInfo struct {
+	symbols []binLib.Symbol
 }
 
-var exchangeInfo binance.ExchangeInfo = binance.ExchangeInfo{}
+func NewSymbolInfo(symbols []binLib.Symbol) SymbolInfo {
+	return SymbolInfo{symbols}
+}
 
-func LoadStoredExchangeInfo() binance.ExchangeInfo {
-	if exchangeInfo.ServerTime == 0 {
-		data := loadInfoString()
-		exchangeInfo = data
+func GetStoredInfo() SymbolInfo {
+	return SymbolInfo{
+		symbols: LoadStoredExchangeInfo().Symbols,
 	}
-	return exchangeInfo
+}
+
+func (smb SymbolInfo) ToPair(symbol string) TradingPair {
+	for _, s := range smb.symbols {
+		if s.Symbol == symbol {
+			return TradingPair{
+				Quote: s.QuoteAsset,
+				Base:  s.BaseAsset,
+			}
+		}
+	}
+	return TradingPair{}
+}
+
+func (smb SymbolInfo) List() []string {
+	var list []string
+	for _, s := range smb.symbols {
+		list = append(list, s.Symbol)
+	}
+	return list
 }
 
 type tradeFeeDetails struct {
@@ -56,7 +73,7 @@ func GetTradeFees(symbols []string) map[string]tradeFeeDetails {
 				return
 			}
 
-			data, err := GetClient().NewTradeFeeService().Symbol(s).Do(context.Background())
+			data, err := binance.GetClient().NewTradeFeeService().Symbol(s).Do(context.Background())
 			if err != nil {
 				utils.LogError(err, "Could not get trading fees")
 				wg.Done()

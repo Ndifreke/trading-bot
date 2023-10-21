@@ -1,8 +1,8 @@
 package main
 
 import (
+	"fmt"
 	"sync"
-	"trading/binance"
 	"trading/names"
 
 	// "github.com/davecgh/go-spew/spew"
@@ -14,7 +14,7 @@ import (
 
 func init() {
 	godotenv.Load()
-	binance.LoadStoredExchangeInfo()
+	names.LoadStoredExchangeInfo()
 }
 
 func main() {
@@ -301,17 +301,17 @@ func main() {
 	// }
 
 	tradeParam := traders.StableTradeParam{
-		QuoteAsset: "USDT",
-		BuyStopLimit: 0.2,
-		BuyDeviationDelta: 1,
-		BuyLockDelta: 0.03,
-		SellStopLimit: 0.1,
+		QuoteAsset:         "USDT",
+		BuyStopLimit:       0.2,
+		BuyDeviationDelta:  1,
+		BuyLockDelta:       0.03,
+		SellStopLimit:      0.1,
 		SellDeviationDelta: 0.5,
-		SellLockDelta: 0.03,
-		BestSide: names.TradeSideSell,
-		Status: traders.StatusContention,
-		MinPriceChange: 3,
-		MaxPriceChange: 11,
+		SellLockDelta:      0.03,
+		BestSide:           names.TradeSideSell,
+		Status:             traders.StatusContention,
+		MinPriceChange:     3,
+		MaxPriceChange:     11,
 	}
 
 	// tradeParam := traders.StableTradeParam{
@@ -327,7 +327,7 @@ func main() {
 	// 	MinPriceChange:     15,
 	// 	MaxPriceChange:     24,
 	// }
-
+	fmt.Println((names.Symbol("BTCUSDT")).Quantity(29911.38))
 	traders.NewAutoStableBestSide(tradeParam).DoTrade()
 
 	unused(traders.NewAutoTrade)

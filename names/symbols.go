@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
-	"trading/binance"
 
 	binLib "github.com/adshao/go-binance/v2"
 )
@@ -50,62 +48,25 @@ func (s Symbol) FormatQuotePrice(price float64) string {
 	return fmt.Sprintf("%f%s", price, quoteSymbol)
 }
 
-type SymbolInfo struct {
-	symbols []binLib.Symbol
-}
-
-func NewSymbolInfo(symbols []binLib.Symbol) SymbolInfo {
-	return SymbolInfo{symbols}
-}
-
-func GetStoredInfo() SymbolInfo {
-	return SymbolInfo{
-		symbols: binance.LoadStoredExchangeInfo().Symbols,
-	}
-}
-
-type SymbolPrecision struct {
-	Quote int
-	Base  int
-}
-
-func (smb SymbolInfo) PreciseValue(symbol string, value float64) float64 {
-	countDecimalPlaces := func(number float64) int {
-		parts := strings.Split(strconv.FormatFloat(number, 'f', -1, 64), ".")
-		if len(parts) > 1 {
-			return len(parts[1])
+func (s Symbol) Info() binLib.Symbol {
+	for _, symbol := range GetStoredInfo().symbols {
+		if s.String() == symbol.Symbol {
+			return symbol
 		}
-		return 0
 	}
-	var stepSize float64
-	for _, s := range smb.symbols {
-		if s.Symbol == symbol {
-			stepSize, _ = strconv.ParseFloat(s.Filters[1]["stepSize"].(string), 64)
+	return binLib.Symbol{}
+}
+
+func (s Symbol) Quantity(quantity float64) float64 {
+	stepSize := 0.0
+	for _, f := range s.Info().Filters {
+		if f["filterType"] == "LOT_SIZE" {
+			stepSize, _ = strconv.ParseFloat(f["stepSize"].(string), 64)
+			if stepSize == 0 {
+				return quantity
+			}
 			break
 		}
 	}
-	// value - stepSize Dont sell exactly what is availble to reduce error caused by price shift
-	toPrecision := fmt.Sprintf("%.*f", countDecimalPlaces(stepSize), value-stepSize)
-	m, _ := strconv.ParseFloat(toPrecision, 64)
-	return m
-}
-
-func (smb SymbolInfo) ToPair(symbol string) TradingPair {
-	for _, s := range smb.symbols {
-		if s.Symbol == symbol {
-			return TradingPair{
-				Quote: s.QuoteAsset,
-				Base:  s.BaseAsset,
-			}
-		}
-	}
-	return TradingPair{}
-}
-
-func (smb SymbolInfo) List() []string {
-	var list []string
-	for _, s := range smb.symbols {
-		list = append(list, s.Symbol)
-	}
-	return list
+	return math.Floor(quantity/stepSize) * stepSize
 }

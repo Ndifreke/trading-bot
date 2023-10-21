@@ -44,10 +44,10 @@ func buy(exec *buyExecutor) bool {
 
 	lastTradePrice := exec.tradeStartPrice
 	quoteBalance := user.CreateUser().GetAccount().GetBalance(exec.config.Symbol.ParseTradingPair().Quote)
-	preciseQuantity := exec.config.Sell.Quantity
+	quantity := exec.config.Sell.Quantity
 
-	if preciseQuantity <= 0 {
-		preciseQuantity = names.GetStoredInfo().PreciseValue(exec.config.Symbol.String(), quoteBalance.Locked/exec.marketPrice)
+	if quantity <= 0 {
+		quantity = exec.config.Symbol.Quantity(quoteBalance.Locked/exec.marketPrice)
 	}
 
 	buyOrder := &binance.CreateOrderResponse{}
@@ -71,11 +71,11 @@ func buy(exec *buyExecutor) bool {
 	var err error
 	buyOrder, err = tradeBinance.CreateBuyMarketOrder(
 		exec.config.Symbol.String(),
-		preciseQuantity,
+		quantity,
 	)
 
 	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Error  Buying %s, Qty=%f Balance=%f", exec.config.Symbol, preciseQuantity, quoteBalance.Locked))
+		utils.LogError(err, fmt.Sprintf("Error  Buying %s, Qty=%f Balance=%f", exec.config.Symbol, quantity, quoteBalance.Locked))
 		return false
 	}
 

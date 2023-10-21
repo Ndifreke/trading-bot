@@ -8,7 +8,6 @@ import (
 	"trading/binance"
 	"trading/helper"
 	"trading/names"
-	"trading/trade/info"
 	"trading/user"
 	"trading/utils"
 )
@@ -260,7 +259,7 @@ func calculateConfigPeggedLimit(configs []names.TradeConfig, spotPriceList map[s
 func getUpdateWithPeggedLimit(configs []names.TradeConfig) []names.TradeConfig {
 	account := user.GetAccount()
 	symbolList := names.TradeConfigs(configs).ListSymbol()
-	fees := binance.GetTradeFees(symbolList)
+	fees := names.GetTradeFees(symbolList)
 
 	takersFees := make(map[string]float64)
 	for symbol, fee := range fees {
@@ -308,7 +307,7 @@ func (fiat *stableutil) CalculateFiatLockDelta() float64 {
 func getStableTradeConfigs(configs []names.TradeConfig) []names.TradeConfig {
 	account := user.GetAccount()
 	symbolList := names.TradeConfigs(configs).ListSymbol()
-	fees := binance.GetTradeFees(symbolList)
+	fees := names.GetTradeFees(symbolList)
 
 	takersFees := make(map[string]float64)
 	for symbol, fee := range fees {
@@ -374,7 +373,7 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 			}
 		}
 
-		info := info.GetNewInfo()
+		info := names.GetNewInfo()
 		symbols = info.FilterSpotable(symbols)
 
 		for _, s := range symbols {
@@ -411,3 +410,4 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 	}
 	return tradingConfigs
 }
+

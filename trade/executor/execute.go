@@ -6,7 +6,6 @@ import (
 	"trading/helper"
 	"trading/names"
 	"trading/utils"
-
 	"github.com/adshao/go-binance/v2"
 )
 
