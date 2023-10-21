@@ -42,9 +42,9 @@ func sell(st *sellExecutor) bool {
 	lastTradePrice := st.tradeStartPrice
 	baseBalance := user.CreateUser().GetAccount().GetBalance(st.config.Symbol.ParseTradingPair().Base)
 
-	preciseQuantity := st.config.Sell.Quantity
-	if preciseQuantity <= 0 {
-		preciseQuantity = names.GetStoredInfo().PreciseValue(st.config.Symbol.String(), baseBalance.Locked)
+	quantity := st.config.Sell.Quantity
+	if quantity <= 0 {
+		quantity = st.config.Symbol.Quantity(baseBalance.Locked)
 	}
 
 	sellOrder := &binance.CreateOrderResponse{}
@@ -68,11 +68,11 @@ func sell(st *sellExecutor) bool {
 	var err error
 	sellOrder, err = tradeBinance.CreateSellMarketOrder(
 		st.config.Symbol.String(),
-		preciseQuantity,
+		quantity,
 	)
 
 	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, preciseQuantity, baseBalance.Locked))
+		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, quantity, baseBalance.Locked))
 		return false
 	}
 	summary(

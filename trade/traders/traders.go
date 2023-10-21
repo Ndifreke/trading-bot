@@ -9,6 +9,13 @@ import (
 	"trading/trade/graph"
 )
 
+
+type status string
+
+var StatusContention status = "CONTENTION"
+var StatusFullfilment status = "FULLFILMENT"
+
+
 func alignStopWithGraph(configs []names.TradeConfig, interval string, datapoints int) []names.TradeConfig {
 	//TODO dont change configurations that are already defined
 	configureFromGraph := func(cfg names.TradeConfig, graph *graph.Graph) names.TradeConfig {
@@ -62,4 +69,26 @@ func alignStopWithGraph(configs []names.TradeConfig, interval string, datapoints
 
 	wg.Wait()
 	return preparedConfig
+}
+
+
+// Update this configs from the best side to it contention side
+func configsSideToContention(configs []names.TradeConfig, bestSide names.TradeSide, bestConfig names.TradeConfig, status status) ([]names.TradeConfig, names.TradeConfig) {
+	if status == StatusFullfilment {
+		bestConfig.Side = bestSide
+	}
+	configsUpdate := []names.TradeConfig{}
+	contentionSide := helper.SwitchTradeSide(bestSide)
+	for _, cfg := range configs {
+		cfg.Side = contentionSide
+		configsUpdate = append(configsUpdate, cfg)
+	}
+	return configsUpdate, bestConfig
+}
+
+func changeStatus(current status) status {
+	if current == StatusContention {
+		return StatusFullfilment
+	}
+	return StatusContention
 }

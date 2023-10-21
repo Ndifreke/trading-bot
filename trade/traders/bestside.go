@@ -26,11 +26,6 @@ import (
 // All parallel buys are initiated simultaneously, and the execution flow continues without waiting for individual buy completion.
 // The function returns when all buys in the list have been processed.
 
-type status string
-
-var StatusContention status = "CONTENTION"
-var StatusFullfilment status = "FULLFILMENT"
-
 type bestSideTrader struct {
 	tradeConfigs       []names.TradeConfig
 	executorFunc       names.ExecutorFunc
@@ -115,13 +110,6 @@ func (tm *bestSideTrader) UstradeTrend(trend graph.TrendType) *bestSideTrader {
 	return tm
 }
 
-func changeStatus(current status) status {
-	if current == StatusContention {
-		return StatusFullfilment
-	}
-	return StatusContention
-}
-
 // TODO Rename to small letter done and remove from interface
 func (tm *bestSideTrader) Done(bestConfig names.TradeConfig, locker names.LockInterface) {
 	tm.broadcast.TerminateBroadCast()
@@ -193,20 +181,6 @@ func (trader *bestSideTrader) Watch(config names.TradeConfig) {
 		}
 		configLocker.TryLockPrice(sub.Price)
 	}
-}
-
-// Update this configs from the best side to it contention side
-func configsSideToContention(configs []names.TradeConfig, bestSide names.TradeSide, bestConfig names.TradeConfig, status status) ([]names.TradeConfig, names.TradeConfig) {
-	if status == StatusFullfilment {
-		bestConfig.Side = bestSide
-	}
-	configsUpdate := []names.TradeConfig{}
-	contentionSide := helper.SwitchTradeSide(bestSide)
-	for _, cfg := range configs {
-		cfg.Side = contentionSide
-		configsUpdate = append(configsUpdate, cfg)
-	}
-	return configsUpdate, bestConfig
 }
 
 type AutoBestBestSideConfig struct {
