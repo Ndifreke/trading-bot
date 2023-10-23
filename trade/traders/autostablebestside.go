@@ -191,7 +191,7 @@ func (trader *stableBestSide_v1) Watch(config names.TradeConfig) {
 
 	deviation := deviation.NewDeviationManager(trader, configLocker)
 
-	deviation.PostAddConfig(func(config names.TradeConfig) names.TradeConfig {
+	deviation.PreAddConfig(func(config names.TradeConfig) names.TradeConfig {
 		// search this config from the initConfig. Note the initConfig is a blueprint
 		// from which other stableTradeConfig can be created from. It represent the users
 		// intent in stable asset and not the percentage or fixed value that can be used by a
@@ -240,4 +240,3 @@ func createStableTrader(initConfigs []names.TradeConfig, bestSide names.TradeSid
 	stableBestSide := getStableSideTrader_v1(initConfigs, contentionConfigs, bestSide, status, tradeCreator, fullfilConfig)
 	return manager.NewTradeManager(stableBestSide)
 }
-

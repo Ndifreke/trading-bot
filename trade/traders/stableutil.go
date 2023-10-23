@@ -382,32 +382,36 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 	}
 
 	for _, Symbol := range symbols {
-
-		config := names.TradeConfig{
-			Symbol: Symbol,
-			Buy: names.SideConfig{
-				MustProfit: true,
-				LimitType:  names.RatePercent,
-				LockDelta:  params.BuyLockDelta,
-				Quantity:   names.MAX_QUANTITY,
-				StopLimit:  params.BuyStopLimit,
-				DeviationSync: names.DeviationSync{
-					Delta: params.BuyDeviationDelta,
-				},
-			},
-			Sell: names.SideConfig{
-				MustProfit: true,
-				LimitType:  names.RatePercent,
-				LockDelta:  params.SellLockDelta,
-				Quantity:   names.MAX_QUANTITY,
-				StopLimit:  params.SellStopLimit,
-				DeviationSync: names.DeviationSync{
-					Delta: params.SellDeviationDelta,
-				},
-			},
-		}
-		tradingConfigs = append(tradingConfigs, config)
+		tradingConfigs = append(tradingConfigs, initConfig(Symbol, params))
 	}
 	return tradingConfigs
 }
 
+// Create a blueprint tradeConfig for this symbol using the params
+// Note this function does not assign a side to the newly created config
+func initConfig(symbol names.Symbol, params StableTradeParam) names.TradeConfig {
+	config := names.TradeConfig{
+		Symbol: symbol,
+		Buy: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			LockDelta:  params.BuyLockDelta,
+			Quantity:   names.MAX_QUANTITY,
+			StopLimit:  params.BuyStopLimit,
+			DeviationSync: names.DeviationSync{
+				Delta: params.BuyDeviationDelta,
+			},
+		},
+		Sell: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			LockDelta:  params.SellLockDelta,
+			Quantity:   names.MAX_QUANTITY,
+			StopLimit:  params.SellStopLimit,
+			DeviationSync: names.DeviationSync{
+				Delta: params.SellDeviationDelta,
+			},
+		},
+	}
+	return config
+}

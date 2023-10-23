@@ -28,7 +28,7 @@ func NewDeviationManager(trader names.Trader, configLocker names.LockInterface) 
 
 // If provided this function will called with the config
 // before it is inserted back again into the trade runner
-func (dev *DeviationManager) PostAddConfig(postAddFunc func(config names.TradeConfig) names.TradeConfig) {
+func (dev *DeviationManager) PreAddConfig(postAddFunc func(config names.TradeConfig) names.TradeConfig) {
 	dev.postAddFunc = postAddFunc
 }
 

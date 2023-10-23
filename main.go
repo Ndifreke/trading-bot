@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 	"trading/names"
 
@@ -300,35 +299,8 @@ func main() {
 	// 	MaxPriceChange: 24,
 	// }
 
-	tradeParam := traders.StableTradeParam{
-		QuoteAsset:         "USDT",
-		BuyStopLimit:       0.2,
-		BuyDeviationDelta:  1,
-		BuyLockDelta:       0.03,
-		SellStopLimit:      0.1,
-		SellDeviationDelta: 0.5,
-		SellLockDelta:      0.03,
-		BestSide:           names.TradeSideSell,
-		Status:             traders.StatusContention,
-		MinPriceChange:     3,
-		MaxPriceChange:     11,
-	}
-
-	// tradeParam := traders.StableTradeParam{
-	// 	QuoteAsset:   "USDT",
-	// 	BuyStopLimit: 0.1,
-	// 	// BuyDeviationDelta: 30,
-	// 	BuyLockDelta:       0.0001,
-	// 	SellStopLimit:      0.2,
-	// 	SellDeviationDelta: 0.001,
-	// 	SellLockDelta:      0.03,
-	// 	BestSide:           names.TradeSideSell,
-	// 	Status:             traders.StatusContention,
-	// 	MinPriceChange:     15,
-	// 	MaxPriceChange:     24,
-	// }
-	fmt.Println((names.Symbol("BTCUSDT")).Quantity(29911.38))
-	traders.NewAutoStableBestSide(tradeParam).DoTrade()
+	traders.NewAutoStableBestSideExample(true)
+	traders.NewAutoStableExample(!true)
 
 	unused(traders.NewAutoTrade)
 	unused(autoConfig)
