@@ -255,19 +255,7 @@ func NewAutoStableBestSide(params StableTradeParam) *manager.TradeManager {
 }
 
 func NewAutoStableBestSideExample(run bool) {
-	tradeParam := StableTradeParam{
-		QuoteAsset:         "USDT",
-		BuyStopLimit:       0.3,
-		BuyDeviationDelta:  1,
-		BuyLockDelta:       0.02,
-		SellStopLimit:      0.1,
-		SellDeviationDelta: 0.3,
-		SellLockDelta:      0.01,
-		BestSide:           names.TradeSideSell,
-		Status:             StatusContention,
-		MinPriceChange:     3,
-		MaxPriceChange:     11,
-	}
+	tradeParam := generateStableParams(300, "USDT")
 	if run {
 		NewAutoStableBestSide(tradeParam).DoTrade()
 	}

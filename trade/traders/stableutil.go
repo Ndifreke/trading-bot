@@ -3,6 +3,7 @@ package traders
 // Buy order = Quote asset
 // Sell order = Base asset
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"trading/binance"
@@ -325,17 +326,17 @@ func getStableTradeConfigs(configs []names.TradeConfig) []names.TradeConfig {
 }
 
 type StableTradeParam struct {
-	QuoteAsset         string
-	SellDeviationDelta float64
-	SellStopLimit      float64
-	SellLockDelta      float64
-	BuyDeviationDelta  float64
-	BuyStopLimit       float64
-	BuyLockDelta       float64
-	BestSide           names.TradeSide
-	Status             status
-	MinPriceChange     float64
-	MaxPriceChange     float64
+	QuoteAsset         string          `json:"quoteAsset"`
+	SellDeviationDelta float64         `json:"sellDeviationDelta"`
+	SellStopLimit      float64         `json:"sellStopLimit"`
+	SellLockDelta      float64         `json:"sellLockDelta"`
+	BuyDeviationDelta  float64         `json:"buyDeviationDelta"`
+	BuyStopLimit       float64         `json:"buyStopLimit"`
+	BuyLockDelta       float64         `json:"buyLockDelta"`
+	BestSide           names.TradeSide `json:"bestSide"`
+	Status             status          `json:"status"`
+	MinPriceChange     float64         `json:"minPriceChange"`
+	MaxPriceChange     float64         `json:"maxPriceChange"`
 }
 
 // Fetch a list of assets and decorate them
@@ -414,4 +415,37 @@ func initConfig(symbol names.Symbol, params StableTradeParam) names.TradeConfig 
 		},
 	}
 	return config
+}
+
+func generateStableParams(quoteAmount float64, quoteAsset string) StableTradeParam {
+	baseAmount := 14.0
+	refParam := StableTradeParam{
+		BuyStopLimit:       0.3,
+		BuyDeviationDelta:  1,
+		BuyLockDelta:       0.02,
+		SellStopLimit:      0.1,
+		SellDeviationDelta: 0.3,
+		SellLockDelta:      0.01,
+		BestSide:           names.TradeSideSell,
+		Status:             StatusContention,
+		MinPriceChange:     3,
+		MaxPriceChange:     11,
+	}
+	increase := (quoteAmount / baseAmount)
+	params := StableTradeParam{
+		QuoteAsset:         quoteAsset,
+		BuyStopLimit:       refParam.BuyStopLimit * increase,
+		BuyDeviationDelta:  refParam.BuyDeviationDelta * increase,
+		SellLockDelta: refParam.SellLockDelta * increase,
+		BuyLockDelta:       refParam.BuyLockDelta * increase,
+		SellStopLimit:      refParam.SellStopLimit * increase,
+		SellDeviationDelta: refParam.SellDeviationDelta * increase,
+		BestSide:           names.TradeSideSell,
+		Status:             StatusContention,
+		MinPriceChange:     3,
+		MaxPriceChange:     11,
+	}
+	r,_ := json.MarshalIndent(params, "", "    ")
+	fmt.Println(string(r))
+	return params
 }
