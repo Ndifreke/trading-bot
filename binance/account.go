@@ -11,10 +11,10 @@ func GetBinanceAccount() *binance.Account {
 	if utils.Env().IsTest() {
 		return &binance.Account{}
 	}
-	s, err := GetClient().NewGetAccountService().Do(context.Background(), binance.WithRecvWindow(60000))
+	account, err := GetClient().NewGetAccountService().Do(context.Background(), binance.WithRecvWindow(60000))
 	if err != nil {
 		utils.LogError(err, "GetBinanceAccount()")
-		return s
+		return account
 	}
-	return s
+	return account
 }

@@ -136,6 +136,7 @@ type LockInterface interface {
 	AbsoluteGrowthPercent() float64
 	RelativeGrowthPercent() float64
 	TryLockPrice(price float64)
+	SetVerbose(verbose bool)
 	TradeSide() TradeSide
 	IsRedemptionDue() bool
 	GetLockManager() LockManagerInterface
@@ -152,6 +153,8 @@ type LockManagerInterface interface {
 	SetLockCreator(LockCreatorFunc)
 	RetrieveLock(config TradeConfig) LockInterface
 	RemoveLock(lock LockInterface) bool
+	RemoveLocks() bool
+	RetrieveLocks() map[Symbol]LockInterface
 }
 
 type ExecutorFunc = func(

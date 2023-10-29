@@ -70,6 +70,8 @@ func NewBroadcast(broadcastId string) *Broadcaster {
 	return p
 }
 
+// sends a message to the streamer to terminate Symbol broadcast for this broadcast listener
+// returns true if this broadcast listener was succesfully terminated
 func (ps *Broadcaster) TerminateBroadCast() bool {
 	cancelled := ps.streamer.UnregisterBroadcast(ps.broadcastId)
 	if cancelled {

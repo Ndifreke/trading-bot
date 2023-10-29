@@ -44,7 +44,7 @@ func sell(st *sellExecutor) bool {
 
 	quantity := st.config.Sell.Quantity
 	if quantity <= 0 {
-		quantity = st.config.Symbol.Quantity(baseBalance.Locked)
+		quantity = st.config.Symbol.Quantity(baseBalance.Free)
 	}
 
 	sellOrder := &binance.CreateOrderResponse{}
@@ -72,7 +72,8 @@ func sell(st *sellExecutor) bool {
 	)
 
 	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, quantity, baseBalance.Locked))
+		utils.TextToSpeach("sell error")
+		go utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, quantity, baseBalance.Free))
 		return false
 	}
 	summary(

@@ -94,6 +94,9 @@ func (t *bestSideTrader) RemoveConfig(config names.TradeConfig) bool {
 		}
 	}
 	t.tradeConfigs = updatedConfigs
+	if removed {
+		t.tradeLockManager.RetrieveLock(config).RemoveFromManager()
+	}
 	return removed
 }
 

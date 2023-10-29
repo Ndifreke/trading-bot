@@ -67,6 +67,9 @@ func (t *autoStableSplit) RemoveConfig(config names.TradeConfig) bool {
 		}
 	}
 	t.tradingConfigs = updatedConfigs
+	if removed {
+		t.tradeLockManager.RetrieveLock(config).RemoveFromManager()
+		}
 	return removed
 }
 
@@ -96,6 +99,8 @@ func (tm *autoStableSplit) Done(tradedConfig names.TradeConfig, locker names.Loc
 	switchedSide := helper.SwitchTradeSide(tradedConfig.Side)
 
 	if switchedSide == tm.bestSide {
+		// We need to fullfil this config that has completed a contention
+		// So lets switch it to best side and redeem it.
 		// Generate a new config using the initParams blueprint and replace it with the traded config
 		newConfig := initConfig(tradedConfig.Symbol, tm.initParams)
 		newConfig.Side = switchedSide
@@ -121,7 +126,7 @@ func (tm *autoStableSplit) Done(tradedConfig names.TradeConfig, locker names.Loc
 			}
 		}
 		quoteBalance := user.GetAccount().
-			GetBalance(newConfig.Symbol.ParseTradingPair().Quote).Locked
+			GetBalance(newConfig.Symbol.ParseTradingPair().Quote).Free
 
 		// A contention should not be allow to use all the available balance of the stable quote asset
 		// Allocate a portion of stable balance meant for contenters to newConfig
@@ -200,7 +205,7 @@ func (trader *autoStableSplit) Watch(config names.TradeConfig) {
 }
 
 // CuncurrentTrades
-func NewAutoStableTrader(params StableTradeParam) *manager.TradeManager {
+func NewAutoStableSplitTrader(params StableTradeParam) *manager.TradeManager {
 	bestSide := params.BestSide
 
 	if bestSide == "" {
@@ -218,7 +223,7 @@ func NewAutoStableTrader(params StableTradeParam) *manager.TradeManager {
 	return manager.NewTradeManager(trader)
 }
 
-func NewAutoStableExample(run bool){
+func NewAutoStableSplitExample(run bool) {
 	tradeParam := StableTradeParam{
 		QuoteAsset:         "USDT",
 		BuyStopLimit:       0.2,
@@ -233,6 +238,6 @@ func NewAutoStableExample(run bool){
 		MaxPriceChange:     11,
 	}
 	if run {
-		NewAutoStableTrader(tradeParam).DoTrade()
+		NewAutoStableSplitTrader(tradeParam).DoTrade()
 	}
 }

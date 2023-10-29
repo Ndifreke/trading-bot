@@ -102,6 +102,9 @@ func (t *stableBestSide_v1) RemoveConfig(config names.TradeConfig) bool {
 		}
 	}
 	t.contentionConfigs = updatedConfigs
+	if removed {
+		t.tradeLockManager.RetrieveLock(config).RemoveFromManager()
+		}
 	return removed
 }
 

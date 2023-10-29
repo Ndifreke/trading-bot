@@ -11,22 +11,15 @@ import (
 
 // LockManager represents a collection of trade locks.
 type LockManager struct {
-	locks       map[names.Symbol]names.LockInterface
-	wrLock      sync.RWMutex
+	locks       sync.Map
 	lockCreator names.LockCreatorFunc
-
-	// Priority side when set will be used to prioritise the trade side to be executed
-	// what this means is that if any config on the side of the priority side is due
-	// regardless of if it is the highest lock, any other config on the opposing side
-	// of the priority will not be executed
 	prioritySide names.TradeSide
 }
 
 // NewLockManager creates a new TradeLocker instance.
 func NewLockManager(lockCreator names.LockCreatorFunc) names.LockManagerInterface {
 	return &LockManager{
-		locks:       make(map[names.Symbol]names.LockInterface),
-		wrLock:      sync.RWMutex{},
+		locks:       sync.Map{},
 		lockCreator: lockCreator,
 	}
 }
@@ -38,22 +31,40 @@ func (m *LockManager) SetPrioritySide(prioritySide names.TradeSide) {
 }
 
 func (m *LockManager) RetrieveLock(config names.TradeConfig) names.LockInterface {
-	return m.locks[config.Symbol]
+	lock, _ := m.locks.Load(config.Symbol)
+	if lock != nil {
+		return lock.(names.LockInterface)
+	}
+	return nil
+}
+
+// Retrieve all locks from this lock manager
+func (m *LockManager) RetrieveLocks() map[names.Symbol]names.LockInterface {
+	locks := make(map[names.Symbol]names.LockInterface)
+	m.locks.Range(func(key, value interface{}) bool {
+		locks[key.(names.Symbol)] = value.(names.LockInterface)
+		return true
+	})
+	return locks
 }
 
 // Remove this lock from the manager
 func (m *LockManager) RemoveLock(lock names.LockInterface) bool {
-	var exist bool
-	for _, l := range m.locks {
-		if l == lock {
-			exist = true
-			break
+	var deleted bool
+	m.locks.Range(func(key, value interface{}) bool {
+		if value == lock {
+			m.locks.Delete(key)
+			deleted = true
 		}
-	}
-	if exist {
-		delete(m.locks, lock.GetLockState().TradeConfig.Symbol)
-	}
-	return exist
+		return true
+	})
+	return deleted
+}
+
+// Remove All locks on this lock manager
+func (m *LockManager) RemoveLocks() bool {
+	m.locks = sync.Map{}
+	return true
 }
 
 // Set the function that will be used to create a new kind of lock
@@ -64,82 +75,47 @@ func (m *LockManager) SetLockCreator(creator names.LockCreatorFunc) {
 
 func (m *LockManager) BestMatureLock() names.LockInterface {
 	var topSellDrift, topBuyDrift float64
-	highest := make(map[names.TradeSide]names.LockInterface)
+	var highestLockSell, highestLockBuy names.LockInterface
 
-	m.wrLock.RLock()
-	for _, lock := range m.locks {
+	m.locks.Range(func(key, value interface{}) bool {
+		lock := value.(names.LockInterface)
 		absoluteChange := lock.AbsoluteGrowthPercent()
 		side := lock.TradeSide()
 		if lock.IsRedemptionDue() {
 			if side.IsSell() && absoluteChange >= topSellDrift {
 				topSellDrift = absoluteChange
-				highest[lock.TradeSide()] = lock
+				highestLockSell = lock
 			} else if side.IsBuy() && absoluteChange >= topBuyDrift {
-				//assumes buy low fix this
 				topBuyDrift = absoluteChange
-				highest[lock.TradeSide()] = lock
+				highestLockBuy = lock
 			}
 		}
-	}
-	m.wrLock.RUnlock()
+		return true
+	})
 
 	if !m.prioritySide.IsEmpty() {
-		priority, exist := highest[m.prioritySide]
-		if exist {
-			return priority
+		if m.prioritySide.IsSell() && highestLockSell != nil {
+			return highestLockSell
+		} else if m.prioritySide.IsBuy() && highestLockBuy != nil {
+			return highestLockBuy
 		}
-		// We could not find lock on the priorty side, let fall back
-		// to the less priority side in case there is a mature due lock
-		side := helper.SwitchTradeSide(m.prioritySide)
-		return highest[side]
 	}
-	buyLock, sellLock := highest[names.TradeSideBuy], highest[names.TradeSideSell]
-	if sellLock == nil {
-		return buyLock
+
+	if highestLockSell != nil && highestLockBuy != nil {
+		if highestLockSell.AbsoluteGrowthPercent() > highestLockBuy.AbsoluteGrowthPercent() {
+			return highestLockSell
+		}
+		return highestLockBuy
 	}
-	if buyLock == nil {
-		return sellLock
+
+	if highestLockSell != nil {
+		return highestLockSell
 	}
-	if sellLock.AbsoluteGrowthPercent() > buyLock.AbsoluteGrowthPercent() {
-		return sellLock
-	}
-	return buyLock
+	return highestLockBuy
 }
 
 func validateLock(config names.TradeConfig, initialPrice float64) {
-	side := config.Side
-	priceLimit := helper.CalculateTradePrice(config, initialPrice).Limit
-	if side.IsSell() && priceLimit <= initialPrice {
-		utils.LogWarn(
-			fmt.Sprintf(
-				"\nThe Configuration of %s is setup for losses\n"+
-					"Initial Price is greater than the stop profit limit for a %s\n"+
-					"Initial Price = %f, Profit Limit = %f",
-				config.Symbol.String(),
-				side.String(),
-				initialPrice, priceLimit,
-			))
-	} else if side.IsBuy() && priceLimit >= initialPrice {
-		utils.LogWarn(fmt.Sprintf(
-			"\nThe Configuration of %s is setup for losses\n"+
-				"Initial Price is less than the stop profit limit for a %s.\n"+
-				"Initial Price = %f, Profit Limit = %f",
-			config.Symbol.String(),
-			side.String(),
-			initialPrice,
-			priceLimit,
-		))
-	}
-
-	if !helper.SideIsValid(side) {
-		utils.LogError(fmt.Errorf("no configuration tradeside"),
-			fmt.Sprintf(
-				"\nconfiguration of %s is setup without a side\n"+
-					"%s\n",
-				config.Symbol.String(),
-				helper.Stringify(config),
-			))
-	}
+	// Validation logic for locks
 }
 
 func validateConfig(config names.TradeConfig) bool {
@@ -161,21 +137,19 @@ func validateConfig(config names.TradeConfig) bool {
 
 // AddLock adds a new lock to the trade locker.
 func (l *LockManager) AddLock(config names.TradeConfig, initialPrice float64) names.LockInterface {
-
 	validateLock(config, initialPrice)
 	validateConfig(config)
 
 	newLock := l.lockCreator(initialPrice, config, false, initialPrice, l, initialPrice)
-	l.wrLock.Lock()
-	l.locks[config.Symbol] = newLock
-	l.wrLock.Unlock()
-
+	l.locks.Store(config.Symbol, newLock)
 	return newLock
 }
 
 func tradePricePercentChange(config names.TradeConfig, price, pretradePrice float64) float64 {
+	// Calculate price change
 	return helper.CalculatePercentageChange(price, pretradePrice)
 }
+
 
 func logLock(lock names.LockInterface) {
 	state := lock.GetLockState()

@@ -41,13 +41,13 @@ func (exec buyExecutor) IsProfitable() bool {
 }
 
 func buy(exec *buyExecutor) bool {
-
+	symbol := exec.config.Symbol
 	lastTradePrice := exec.tradeStartPrice
-	quoteBalance := user.CreateUser().GetAccount().GetBalance(exec.config.Symbol.ParseTradingPair().Quote)
+	quoteBalance := user.CreateUser().GetAccount().GetBalance(symbol.ParseTradingPair().Quote)
 	quantity := exec.config.Sell.Quantity
 
 	if quantity <= 0 {
-		quantity = exec.config.Symbol.Quantity(quoteBalance.Locked/exec.marketPrice)
+		quantity = symbol.Quantity(quoteBalance.Free / exec.marketPrice)
 	}
 
 	buyOrder := &binance.CreateOrderResponse{}
@@ -75,7 +75,9 @@ func buy(exec *buyExecutor) bool {
 	)
 
 	if err != nil {
-		utils.LogError(err, fmt.Sprintf("Error  Buying %s, Qty=%f Balance=%f", exec.config.Symbol, quantity, quoteBalance.Locked))
+		go utils.TextToSpeach("Buy error")
+		utils.LogError(err, fmt.Sprintf(
+			"Error  Buying %s,\n Supplied Qty=%f\n Calculated Qty=%f\n Quote Balance=%f", exec.config.Symbol, exec.config.Sell.Quantity, quantity, quoteBalance.Free))
 		return false
 	}
 

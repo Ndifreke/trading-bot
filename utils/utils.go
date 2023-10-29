@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 
 	"github.com/joho/godotenv"
@@ -39,8 +41,9 @@ func (e *env) SetModeTest() {
 }
 
 func Env() *env {
-    e := env("env")
-    return &e
+	// e := env("env")
+	e := env(os.Getenv("ENV"))
+	return &e
 }
 
 func (e *env) getEnvNumber(envName string) float64 {
@@ -88,3 +91,26 @@ func (e *env) RandomNumber() float64 {
 func RandomNumber(min, max float64) float64 {
 	return min + rand.Float64()*(max-min)
 }
+
+func TextToSpeach(text string) {
+
+	cmd := exec.Command("say", text)
+
+	// Redirect the 'say' command's output to the standard audio output
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Execute the command
+	if err := cmd.Run(); err != nil {
+		panic(err)
+	}
+
+}
+
+func LoadMyEnvFile() {
+    baseDir, _ := os.Getwd() // Get the current working directory
+    envFilePath := filepath.Join(baseDir, ".env")
+	_ = envFilePath
+    godotenv.Load("../.env")
+}
+

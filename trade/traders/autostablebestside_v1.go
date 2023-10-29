@@ -93,6 +93,9 @@ func (t *autoStableBestSide) RemoveConfig(config names.TradeConfig) bool {
 		}
 	}
 	t.contentionConfigs = updatedConfigs
+	if removed {
+		t.tradeLockManager.RetrieveLock(config).RemoveFromManager()
+	}
 	return removed
 }
 
@@ -255,8 +258,10 @@ func NewAutoStableBestSide(params StableTradeParam) *manager.TradeManager {
 }
 
 func NewAutoStableBestSideExample(run bool) {
-	tradeParam := generateStableParams(300, "USDT")
-	if run {
-		NewAutoStableBestSide(tradeParam).DoTrade()
+	if !run {
+		return
 	}
+	tradeParam := generateStableParams(300, "USDT")
+	NewAutoStableBestSide(tradeParam).DoTrade()
+
 }
