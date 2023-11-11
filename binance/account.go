@@ -8,7 +8,7 @@ import (
 )
 
 func GetBinanceAccount() *binance.Account {
-	if utils.Env().IsTest() {
+	if utils.Env().IsMock() {
 		return &binance.Account{}
 	}
 	account, err := GetClient().NewGetAccountService().Do(context.Background(), binance.WithRecvWindow(60000))

@@ -344,7 +344,7 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 	var symbols []names.Symbol
 	var tradingConfigs []names.TradeConfig
 
-	if utils.Env().IsTest() {
+	if utils.Env().IsMock() {
 		symbols = []names.Symbol{"BTCUSDT", "BNBUSDT"}
 	} else {
 		stats := binance.GetSymbolStats()
@@ -391,9 +391,9 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 // Note this function does not assign a side to the newly created config
 func initConfig(symbol names.Symbol, params StableTradeParam) names.TradeConfig {
 	config := names.TradeConfig{
-		Symbol: symbol,
+		Symbol:    symbol,
 		IsCyclick: true,
-		Side: names.TradeSideBuy,
+		Side:      names.TradeSideBuy,
 		Buy: names.SideConfig{
 			MustProfit: true,
 			LimitType:  names.RatePercent,
@@ -403,7 +403,6 @@ func initConfig(symbol names.Symbol, params StableTradeParam) names.TradeConfig 
 			DeviationSync: names.DeviationSync{
 				Delta: params.BuyDeviationDelta,
 			},
-			
 		},
 		Sell: names.SideConfig{
 			MustProfit: true,
@@ -426,12 +425,12 @@ func renitTradeConfig(config names.TradeConfig, initParams StableTradeParam) nam
 	cfg.Side = config.Side
 	stableConfig := getStableTradeConfigs(names.NewIdTradeConfigs(cfg))
 	return stableConfig[0]
-} 
+}
 
 func generateStableParams(quoteAmount float64, quoteAsset string) StableTradeParam {
 	baseAmount := 900.0
 	refParam := StableTradeParam{
-		QuoteAsset: quoteAsset,
+		QuoteAsset:         quoteAsset,
 		BuyStopLimit:       30,
 		BuyDeviationDelta:  10,
 		BuyLockDelta:       0.5,
@@ -443,7 +442,7 @@ func generateStableParams(quoteAmount float64, quoteAsset string) StableTradePar
 		MinPriceChange:     2,
 		MaxPriceChange:     20,
 	}
-	increase := (quoteAmount /baseAmount)
+	increase := (quoteAmount / baseAmount)
 	params := StableTradeParam{
 		QuoteAsset:         quoteAsset,
 		BuyStopLimit:       refParam.BuyStopLimit * increase,
@@ -472,6 +471,6 @@ func generateStableParams(quoteAmount float64, quoteAsset string) StableTradePar
 	// }
 
 	r, e := json.MarshalIndent(params, "", "    ")
-	fmt.Println(string(r),e)
+	fmt.Println(string(r), e)
 	return params
 }

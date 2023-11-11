@@ -14,7 +14,7 @@ func TestNewAssetGainsLock(t *testing.T) {
 	// 	Balances: map[string]user.Balance{"BTC": {Locked: 2}, "USDT": {Locked: 50}},
 	// 	Account:  &binance.Account{},
 	// }
-	utils.Env().SetModeTest()
+	utils.Env().SetModeMock()
 
 	BTCUSDT := names.TradeConfig{
 		Side: names.TradeSideBuy,

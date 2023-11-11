@@ -17,8 +17,12 @@ func init() {
 
 type env string
 
-func (e *env) IsTest() bool {
-	return os.Getenv("ENV") == "test"
+func (e *env) IsMock() bool {
+	return os.Getenv("ENV") == "mock"
+}
+
+func (e *env) IsPreventTrade() bool {
+	return os.Getenv("PREVENT_TRADE") == "true"
 }
 
 func (e *env) IsProd() bool {
@@ -36,8 +40,8 @@ func (e *env) GetEnv() bool {
 func (e *env) SellTrue() bool {
 	return len(os.Getenv("ALWAY_SELL")) > 0
 }
-func (e *env) SetModeTest() {
-	os.Setenv("ENV", "test")
+func (e *env) SetModeMock() {
+	os.Setenv("ENV", "mock")
 }
 
 func Env() *env {
@@ -108,9 +112,8 @@ func TextToSpeach(text string) {
 }
 
 func LoadMyEnvFile() {
-    baseDir, _ := os.Getwd() // Get the current working directory
-    envFilePath := filepath.Join(baseDir, ".env")
+	baseDir, _ := os.Getwd() // Get the current working directory
+	envFilePath := filepath.Join(baseDir, ".env")
 	_ = envFilePath
-    godotenv.Load("../.env")
+	godotenv.Load("../.env")
 }
-

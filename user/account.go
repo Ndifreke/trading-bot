@@ -26,7 +26,7 @@ type Account struct {
 }
 
 func GetAccount() AccountInterface {
-	if utils.Env().IsTest() {
+	if utils.Env().IsMock()  {
 		return MockAccount
 	}
 
