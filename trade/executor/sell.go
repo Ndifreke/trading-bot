@@ -1,15 +1,10 @@
 package executor
 
 import (
-	"fmt"
-	// "time"
-	tradeBinance "trading/binance"
+
 	"trading/helper"
 	"trading/names"
 	"trading/user"
-	"trading/utils"
-
-	binance "github.com/adshao/go-binance/v2"
 )
 
 type sellExecutor executorType
@@ -38,54 +33,25 @@ func (exec *sellExecutor) IsProfitable() bool {
 	return (exec.marketPrice - exec.tradeStartPrice) > exec.fees.Value*2
 }
 
-func sell(st *sellExecutor) bool {
-	lastTradePrice := st.tradeStartPrice
-	baseBalance := user.CreateUser().GetAccount().GetBalance(st.config.Symbol.ParseTradingPair().Base)
-
-	quantity := st.config.Sell.Quantity
-	if quantity <= 0 {
-		quantity = st.config.Symbol.Quantity(baseBalance.Free)
-	}
-
-	sellOrder := &binance.CreateOrderResponse{}
-
-	if utils.Env().IsTest() {
-		summary(
-			st.config,
-			st.config.Side,
-			st.config.Symbol,
-			lastTradePrice,
-			st.tradeStartPrice,
-			st.marketPrice,
-			st.marketPrice-lastTradePrice,
-			st.fees,
-			st.config.Sell.Quantity,
-			*sellOrder,
-		)
-		return true
-	}
-
-	var err error
-	sellOrder, err = tradeBinance.CreateSellMarketOrder(
-		st.config.Symbol.String(),
-		quantity,
-	)
-
+func sell(sell *sellExecutor) bool {
+	pretradePrice := sell.tradeStartPrice
+	account := user.CreateUser().GetAccount()
+	sellOrder, err := account.TradeSellConfig(sell.config, sell.marketPrice)
+	
 	if err != nil {
-		utils.TextToSpeach("sell error")
-		go utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", st.config.Symbol, quantity, baseBalance.Free))
 		return false
 	}
+
 	summary(
-		st.config,
-		st.config.Side,
-		st.config.Symbol,
-		lastTradePrice,
-		st.tradeStartPrice,
-		st.marketPrice,
-		st.marketPrice-lastTradePrice,
-		st.fees,
-		st.config.Sell.Quantity,
+		sell.config,
+		sell.config.Side,
+		sell.config.Symbol,
+		pretradePrice,
+		sell.tradeStartPrice,
+		sell.marketPrice,
+		sell.marketPrice-pretradePrice,
+		sell.fees,
+		sell.config.Sell.Quantity,
 		*sellOrder,
 	)
 	return true
@@ -93,10 +59,5 @@ func sell(st *sellExecutor) bool {
 
 func (exec *sellExecutor) Execute() bool {
 	sold := sell(exec)
-	if sold {
-		// Pause for 1 second for the server executing server to complete the order
-		// TODO it would be nice to recursive check if this is filled
-		// time.Sleep(10 * time.Second)
-	}
 	return sold
 }

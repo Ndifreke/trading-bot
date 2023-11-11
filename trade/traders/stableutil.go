@@ -345,8 +345,7 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 	var tradingConfigs []names.TradeConfig
 
 	if utils.Env().IsTest() {
-		symbols = []names.Symbol{"BTCUSDT","BNBUSDT"} //"BNBUSDT"
-
+		symbols = []names.Symbol{"BTCUSDT", "BNBUSDT"}
 	} else {
 		stats := binance.GetSymbolStats()
 		// We select asset with at most 2% and increase, this
@@ -393,6 +392,8 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 func initConfig(symbol names.Symbol, params StableTradeParam) names.TradeConfig {
 	config := names.TradeConfig{
 		Symbol: symbol,
+		IsCyclick: true,
+		Side: names.TradeSideBuy,
 		Buy: names.SideConfig{
 			MustProfit: true,
 			LimitType:  names.RatePercent,
@@ -402,6 +403,7 @@ func initConfig(symbol names.Symbol, params StableTradeParam) names.TradeConfig 
 			DeviationSync: names.DeviationSync{
 				Delta: params.BuyDeviationDelta,
 			},
+			
 		},
 		Sell: names.SideConfig{
 			MustProfit: true,
@@ -424,25 +426,24 @@ func renitTradeConfig(config names.TradeConfig, initParams StableTradeParam) nam
 	cfg.Side = config.Side
 	stableConfig := getStableTradeConfigs(names.NewIdTradeConfigs(cfg))
 	return stableConfig[0]
-}
+} 
 
 func generateStableParams(quoteAmount float64, quoteAsset string) StableTradeParam {
-	baseAmount := 14.0
+	baseAmount := 900.0
 	refParam := StableTradeParam{
-		BuyStopLimit:       0.3,
-		BuyDeviationDelta:  1,
-		BuyLockDelta:       0.02,
-		SellStopLimit:      0.1,
-		SellDeviationDelta: 0.3,
-		SellLockDelta:      0.01,
+		QuoteAsset: quoteAsset,
+		BuyStopLimit:       30,
+		BuyDeviationDelta:  10,
+		BuyLockDelta:       0.5,
+		SellStopLimit:      8,
+		SellDeviationDelta: 20,
+		SellLockDelta:      0.02,
 		BestSide:           names.TradeSideSell,
 		Status:             StatusContention,
-		// MinPriceChange:     3,
-		// MaxPriceChange:     11,
 		MinPriceChange:     2,
-		MaxPriceChange:     0.2,
+		MaxPriceChange:     20,
 	}
-	increase := (quoteAmount / baseAmount)
+	increase := (quoteAmount /baseAmount)
 	params := StableTradeParam{
 		QuoteAsset:         quoteAsset,
 		BuyStopLimit:       refParam.BuyStopLimit * increase,
@@ -453,10 +454,24 @@ func generateStableParams(quoteAmount float64, quoteAsset string) StableTradePar
 		SellDeviationDelta: refParam.SellDeviationDelta * increase,
 		BestSide:           names.TradeSideSell,
 		Status:             StatusContention,
-		MinPriceChange:     3,
-		MaxPriceChange:     11,
+		MinPriceChange:     refParam.MinPriceChange,
+		MaxPriceChange:     refParam.MaxPriceChange,
 	}
-	r, _ := json.MarshalIndent(params, "", "    ")
-	fmt.Println(string(r))
+	// params := StableTradeParam{
+	// 	QuoteAsset: quoteAsset,
+	// 	BuyStopLimit:       8,
+	// 	BuyDeviationDelta:  5,
+	// 	BuyLockDelta:       0.5,
+	// 	SellStopLimit:      4,
+	// 	SellDeviationDelta: 10,
+	// 	SellLockDelta:      0.02,
+	// 	BestSide:           names.TradeSideSell,
+	// 	Status:             StatusContention,
+	// 	MinPriceChange:     2,
+	// 	MaxPriceChange:     20,
+	// }
+
+	r, e := json.MarshalIndent(params, "", "    ")
+	fmt.Println(string(r),e)
 	return params
 }

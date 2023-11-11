@@ -3,10 +3,10 @@ package traders
 import (
 	// "fmt"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 	"trading/binance"
-	"trading/helper"
 	"trading/names"
 	"trading/stream"
 	"trading/trade/deviation"
@@ -22,12 +22,11 @@ import (
 //splits the balance of the trade between all the assets so that every asset takes
 // an equal percentage
 
-type autoStable struct {
+type autoStableBuyHigh struct {
 	initParams       StableTradeParam
 	tradingConfigs   names.TradeConfigs
 	executorFunc     names.ExecutorFunc
 	tradeLockManager names.LockManagerInterface
-	bestSide         names.TradeSide
 	status           status
 	fullfillId       string
 	broadcast        *stream.Broadcaster
@@ -35,21 +34,20 @@ type autoStable struct {
 	mutex            sync.Mutex
 }
 
-func createAutoStable(initParams StableTradeParam, tradingConfigs names.TradeConfigs, staus status, bestSide names.TradeSide) *autoStable {
-	trader := &autoStable{
+func createAutoStableBuyHigh(initParams StableTradeParam, tradingConfigs names.TradeConfigs) *autoStableBuyHigh {
+	trader := &autoStableBuyHigh{
 		fullfillId:     "",
-		status:         staus,
+		status:         StatusContention,
 		initParams:     initParams,
 		tradingConfigs: tradingConfigs,
 		broadcast:      stream.NewBroadcast(uuid.New().String()),
-		bestSide:       bestSide,
 		contentionTime: sync.Map{},
 		mutex:          sync.Mutex{},
 	}
 	return trader
 }
 
-func (t *autoStable) Run() {
+func (t *autoStableBuyHigh) Run() {
 	for _, tc := range t.tradingConfigs {
 		if isValidPeggedBestSideConfig(tc) {
 			continue
@@ -58,13 +56,13 @@ func (t *autoStable) Run() {
 	}
 }
 
-func (t *autoStable) SetExecutor(executorFunc names.ExecutorFunc) names.Trader {
+func (t *autoStableBuyHigh) SetExecutor(executorFunc names.ExecutorFunc) names.Trader {
 	t.executorFunc = executorFunc
 	return t
 }
 
 // Remove a config and it associated registeredLocks (subscription and lock)
-func (tm *autoStable) RemoveConfig(config names.TradeConfig) bool {
+func (tm *autoStableBuyHigh) RemoveConfig(config names.TradeConfig) bool {
 	tm.mutex.Lock()
 	defer tm.mutex.Unlock()
 	var removed bool
@@ -90,7 +88,7 @@ func (tm *autoStable) RemoveConfig(config names.TradeConfig) bool {
 // Add a new config to start watching. If this config exist already
 // it will be replaced by the added config and the channel and lock assocated with
 // them will also be removed
-func (t *autoStable) AddConfig(config names.TradeConfig) {
+func (t *autoStableBuyHigh) AddConfig(config names.TradeConfig) {
 	t.mutex.Lock()
 	t.tradingConfigs = append(t.tradingConfigs, config)
 	t.mutex.Unlock()
@@ -98,17 +96,17 @@ func (t *autoStable) AddConfig(config names.TradeConfig) {
 	go t.Watch(config)
 }
 
-func (tm *autoStable) UstradeTrend(trend graph.TrendType) *autoStable {
+func (tm *autoStableBuyHigh) UstradeTrend(trend graph.TrendType) *autoStableBuyHigh {
 	panic("Unsupported action")
 }
 
-func (tm *autoStable) setConfigContentionTime(config names.TradeConfig) {
+func (tm *autoStableBuyHigh) setConfigContentionTime(config names.TradeConfig) {
 	tm.contentionTime.Store(config.Id, time.Now())
 }
 
 // renit this contention if the time is elapsed a contention can only run for
 // 15 minute then we have to destroy it and reinitialise it
-func (tm *autoStable) isContentionTimeUp(config names.TradeConfig) bool {
+func (tm *autoStableBuyHigh) isContentionTimeUp(config names.TradeConfig) bool {
 
 	// we need to be sure it is not full and fullfil status
 	if value, exist := tm.contentionTime.Load(config.Id); exist && config.Id != tm.fullfillId {
@@ -148,49 +146,30 @@ func (tm *autoStable) isContentionTimeUp(config names.TradeConfig) bool {
 }
 
 // TODO Rename to small letter done and remove from interface
-func (tm *autoStable) Done(tradedConfig names.TradeConfig, locker names.LockInterface) {
-	// tm.mutex.Lock()
-	// defer tm.mutex.Unlock()
+func (tm *autoStableBuyHigh) Done(tradedConfig names.TradeConfig, locker names.LockInterface) {
 
-	removed := tm.RemoveConfig(tradedConfig)
-	_, exist := tm.tradingConfigs.Find(tradedConfig.Id)
+	cfg, exist := tm.tradingConfigs.Find(tradedConfig.Id)
+	removed := tm.RemoveConfig(cfg)
 
 	if removed && exist {
 		utils.LogError(fmt.Errorf("removed but still exist tradedConfig config, ensure the config with id %s was called by <names.NewIdTradeConfigs>", tradedConfig.Id), "<autostable>")
-		// panic("an error occured, could not find tradedConfig config, ensure the config with id was called by <names.NewIdTradeConfigs>")
+		log.Fatal("removed but still exist tradedConfig config, ensure the config with id %s was called by <names.NewIdTradeConfigs>", tradedConfig.Id)
 	}
 
-	// Generate from init params
-	nextSide := helper.SwitchTradeSide(tradedConfig.Side)
-
-	if tm.status == StatusContention && nextSide == tm.bestSide {
-		// We need to fulfill this configuration that has completed a contention.
-		// So, let's switch it to the best side and redeem it.
-		// Generate a new configuration using the initParams blueprint
-
-		// newConfig := initConfig(tradedConfig.Symbol, tm.initParams)
-		// newConfig.Side = switchedSide
-		// newConfig.Id = tradedConfig.Id
-
-		// if newConfig.Side.IsBuy() {
-		// 	newConfig.Buy.Quantity = names.MAX_QUANTITY
-		// } else {
-		// 	newConfig.Sell.Quantity = names.MAX_QUANTITY
-		// }
-		// newConfig = getStableTradeConfigs(names.NewIdTradeConfigs(newConfig))[0]
-
-		//
-		tradedConfig.Side = nextSide
-		if tradedConfig.Side.IsBuy() {
-			tradedConfig.Buy.Quantity = names.MAX_QUANTITY
-		} else {
-			tradedConfig.Sell.Quantity = names.MAX_QUANTITY
-		}
+	if tm.status == StatusContention && tradedConfig.Side == names.TradeSideBuy {
+		// change the side only after the config has been generated, this is to
+		// ensure that we reinit the config with the opposite side of the params
 		tradedConfig = renitTradeConfig(tradedConfig, tm.initParams)
-		//
+		tradedConfig.Side = names.TradeSideSell
+
+		// we cannot use the same side during contention for redemption there
+		// is a chance that the values may be too high and the trade will not be exuted
+		// so we switch the side to other side which we presume will be lower and meant for redemption
+		// A stright forward solution will be to explicitly set the side to sell since this is an auto stable high trader
+		tradedConfig.Sell = tradedConfig.Buy
+		tradedConfig.Sell.Quantity = names.MAX_QUANTITY
 
 		tm.status = StatusFullfilment
-		// tm.fullfillId = newConfig.Id
 		tm.fullfillId = tradedConfig.Id
 		tm.AddConfig(tradedConfig)
 	} else {
@@ -216,9 +195,9 @@ func (tm *autoStable) Done(tradedConfig names.TradeConfig, locker names.LockInte
 		updatedTradeConfigs := []names.TradeConfig{}
 
 		for _, cfg := range newConfigs {
-			idConfig := names.NewIdTradeConfigs(cfg)[0]
-			idConfig.Side = nextSide
-			updatedTradeConfigs = append(updatedTradeConfigs, idConfig)
+			withId := names.NewIdTradeConfigs(cfg)[0]
+			withId.Side = names.TradeSideSell
+			updatedTradeConfigs = append(updatedTradeConfigs, withId)
 		}
 
 		tm.tradingConfigs = getStableTradeConfigs(updatedTradeConfigs)
@@ -226,12 +205,12 @@ func (tm *autoStable) Done(tradedConfig names.TradeConfig, locker names.LockInte
 	}
 }
 
-func (t *autoStable) SetLockManager(lockMan names.LockManagerInterface) names.Trader {
+func (t *autoStableBuyHigh) SetLockManager(lockMan names.LockManagerInterface) names.Trader {
 	t.tradeLockManager = lockMan
 	return t
 }
 
-func (tm *autoStable) Watch(config names.TradeConfig) {
+func (tm *autoStableBuyHigh) Watch(config names.TradeConfig) {
 
 	tm.setConfigContentionTime(config)
 	executor := tm.executorFunc
@@ -255,12 +234,16 @@ func (tm *autoStable) Watch(config names.TradeConfig) {
 				)
 			}
 		} else {
+			// switch this config to buy so that executor will buy it even
+			// though the contention was set to sell
+			tradeConfig := state.TradeConfig
+			tradeConfig.Side = names.TradeSideBuy
 			executor(
-				state.TradeConfig,
+				tradeConfig,
 				state.Price,
 				state.PretradePrice,
 				func() {
-					tm.Done(state.TradeConfig, configLocker)
+					tm.Done(tradeConfig, configLocker)
 				},
 			)
 		}
@@ -297,13 +280,7 @@ func (tm *autoStable) Watch(config names.TradeConfig) {
 	}
 }
 
-// CuncurrentTrades
-func NewAutoStableTrader(initParams StableTradeParam) *manager.TradeManager {
-	bestSide := initParams.BestSide
-
-	if bestSide == "" {
-		bestSide = names.TradeSideSell
-	}
+func NewAutoStableBuyHighTrader(initParams StableTradeParam) *manager.TradeManager {
 
 	tradeConfigs := names.NewIdTradeConfigs(GenerateStableTradeConfigs(initParams)...)
 
@@ -311,15 +288,28 @@ func NewAutoStableTrader(initParams StableTradeParam) *manager.TradeManager {
 		return &manager.TradeManager{}
 	}
 
-	tradeConfigs, _ = configsSideToContention(tradeConfigs, bestSide, names.TradeConfig{}, StatusContention)
+	tradeConfigs, _ = configsSideToContention(tradeConfigs, names.TradeSideBuy, names.TradeConfig{}, StatusContention)
 	tradeConfigs = getStableTradeConfigs(tradeConfigs)
-	trader := createAutoStable(initParams, tradeConfigs, StatusContention, bestSide)
+	trader := createAutoStableBuyHigh(initParams, tradeConfigs)
 	return manager.NewTradeManager(trader)
 }
 
-func NewAutoStableExample(run bool) {
+func NewAutoStableBuyHighExample(run bool) {
 	tradeParam := generateStableParams(160, "USDT")
+	reverseTradeParam := StableTradeParam{
+		QuoteAsset:         tradeParam.QuoteAsset,
+		BuyStopLimit:       tradeParam.SellStopLimit,
+		BuyDeviationDelta:  tradeParam.SellDeviationDelta,
+		SellLockDelta:      tradeParam.BuyLockDelta,
+		BuyLockDelta:       tradeParam.SellLockDelta,
+		SellStopLimit:      tradeParam.BuyStopLimit,
+		SellDeviationDelta: tradeParam.BuyDeviationDelta,
+		BestSide:           names.TradeSideSell,
+		Status:             StatusContention,
+		MinPriceChange:     tradeParam.MinPriceChange,
+		MaxPriceChange:     tradeParam.MaxPriceChange,
+	}
 	if run {
-		NewAutoStableTrader(tradeParam).DoTrade()
+		NewAutoStableBuyHighTrader(reverseTradeParam).DoTrade()
 	}
 }

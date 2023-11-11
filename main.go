@@ -3,6 +3,7 @@ package main
 import (
 	"sync"
 	"trading/names"
+
 	// "github.com/davecgh/go-spew/spew"
 	"github.com/joho/godotenv"
 
@@ -297,9 +298,11 @@ func main() {
 	// 	MinPriceChange: 14,
 	// 	MaxPriceChange: 24,
 	// }
-	traders.NewAutoStableBestSideExample(!true)
-	traders.NewAutoStableExample(true)
-	traders.NewAutoStableSplitExample(!true)
+	// traders.NewAutoStableBestSideExample(!true)
+	// traders.NewAutoStableExample(!true)
+	traders.NewAutoStableBuyHighExample(true)
+	// traders.NewAutoStableSplitExample(!true)
+	// traders.NewStableLimitExample(!true)
 
 	unused(traders.NewAutoTrade)
 	unused(autoConfig)

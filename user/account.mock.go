@@ -1,10 +1,13 @@
 package user
 
 import (
-	"github.com/adshao/go-binance/v2"
-	"github.com/joho/godotenv"
+	"fmt"
+	"time"
 	"trading/names"
 	"trading/utils"
+
+	binLib "github.com/adshao/go-binance/v2"
+	"github.com/joho/godotenv"
 )
 
 func init() {
@@ -13,7 +16,7 @@ func init() {
 
 type AccountMock struct {
 	balances map[string]Balance
-	account  *binance.Account
+	account  *binLib.Account
 }
 
 func getMock() AccountMock {
@@ -50,7 +53,7 @@ func (mock *AccountMock) UpdateLockBalance(asset string, locked float64) {
 	}
 }
 
-func (mock *AccountMock) Account() *binance.Account {
+func (mock *AccountMock) Account() *binLib.Account {
 	return mock.account
 }
 
@@ -73,60 +76,103 @@ func (mock *AccountMock) UpdateFreeBalance(asset string, free float64) {
 	}
 }
 
-func (mock *AccountMock) debit(asset string, cost float64) bool {
+func (mock *AccountMock) debit(asset string, cost float64) (error, bool) {
 	balance := mock.GetBalance(asset).Free
 	if cost > 0 && balance >= cost {
 		mock.UpdateLockBalance(asset, balance-cost)
-		return true
+		return nil, true
 	}
-	return false
+	return fmt.Errorf("%s cost %f, or balance %f, error ", asset, cost, balance), false
 }
 
-func (mock *AccountMock) credit(asset string, quantity float64) bool {
+func (mock *AccountMock) credit(asset string, quantity float64) (error, bool) {
 	balance := mock.GetBalance(asset).Free
 	if quantity > 0 {
 		mock.UpdateLockBalance(asset, balance+quantity)
-		return true
+		return nil, true
 	}
-	return false
+	return fmt.Errorf("invalid %s quantity %f is less than zero", asset, quantity), false
 }
 
-func (mock *AccountMock) Trade(quantity, spot float64, symbol names.Symbol, side names.TradeSide) {
+func (mock *AccountMock) Trade(quantity, spot float64, symbol names.Symbol, side names.TradeSide) (error, bool) {
 	commission := 0.01
 	_ = commission
 	// Check if the asset balance exists; create it if not
 	baseAsset := symbol.Info().BaseAsset
 	quoteAsset := symbol.Info().QuoteAsset
-
-	// Calculate the total cost including commission
-
-	// Place the order
-	// response, err := account.account.CreateOrder(binance.CreateOrderRequest{
-	//     Symbol:      symbolStr,
-	//     Side:        string(side),
-	//     Type:        binance.OrderTypeMarket,
-	//     Quantity:    quantity,
-	//     Price:       price,
-	//     TimeInForce: binance.TimeInForceGTC,
-	// })
-
-	// if err != nil {
-	// 	// Handle the error
-	// 	panic("Error placing order: " + err.Error())
-	// }
-
-	// Update balances based on the executed trade
+	err, debited := fmt.Errorf("invalid trade side, must be BUY or SELL"), false
+	
 	if side == names.TradeSideBuy {
 		totalCost := quantity * spot
-		if mock.debit(quoteAsset, totalCost) {
-			mock.credit(baseAsset, quantity)
+		if err, debited = mock.debit(quoteAsset, totalCost); debited {
+			return mock.credit(baseAsset, quantity)
 		}
 	} else if side == names.TradeSideSell {
 		earnings := quantity * spot
-		if mock.debit(baseAsset, quantity) {
-			mock.credit(quoteAsset, earnings)
+		if err, debited = mock.debit(baseAsset, quantity); debited {
+			return mock.credit(quoteAsset, earnings)
 		}
 	}
+
+	return err, debited
+}
+
+func (mock *AccountMock) TradeBuyConfig(config names.TradeConfig, spot float64) (*binLib.CreateOrderResponse, error) {
+	symbol := config.Symbol
+	quoteBalance := mock.GetBalance(symbol.ParseTradingPair().Quote)
+
+	quantity := config.Buy.Quantity
+	if quantity <= 0 {
+		quantity = symbol.Quantity(quoteBalance.Free / spot)
+	}
+	if err, _ := mock.Trade(quantity, spot, symbol, names.TradeSideBuy); err != nil {
+		utils.TextToSpeach("Buy error")
+		utils.LogError(err, fmt.Sprintf(
+			"Error  Buying %s,\n Supplied Qty=%f\n Calculated Qty=%f\n Quote Balance=%f", config.Symbol, config.Buy.Quantity, quantity, quoteBalance.Free))
+		return &binLib.CreateOrderResponse{}, err
+	}
+
+	buyOrder := &binLib.CreateOrderResponse{
+		Price:            fmt.Sprintf("%f", spot),
+		OrigQuantity:     fmt.Sprintf("%f", quantity),
+		ExecutedQuantity: fmt.Sprintf("%f", quantity),
+		Type:             binLib.OrderTypeMarket,
+		Status:           "FILLED",
+		TransactTime:     time.Now().Unix(),
+		Symbol:           symbol.String(),
+		Side:             binLib.SideTypeBuy,
+		OrderID:          123,
+	}
+	return buyOrder, nil
+}
+
+func (mock *AccountMock) TradeSellConfig(config names.TradeConfig, spot float64) (*binLib.CreateOrderResponse, error) {
+	symbol := config.Symbol
+	baseBalance := mock.GetBalance(symbol.ParseTradingPair().Base)
+	quantity := config.Sell.Quantity
+
+	if quantity <= 0 {
+		quantity = config.Symbol.Quantity(baseBalance.Free)
+	}
+
+	if err, _ := mock.Trade(quantity, spot, symbol, names.TradeSideSell); err != nil {
+		utils.TextToSpeach("sell error")
+		utils.LogError(err, fmt.Sprintf("Error Selling %s, Qty=%f Balance=%f", symbol, quantity, baseBalance.Free))
+		return &binLib.CreateOrderResponse{}, err
+	}
+
+	sellOrder := &binLib.CreateOrderResponse{
+		Price:            fmt.Sprintf("%f", spot),
+		OrigQuantity:     fmt.Sprintf("%f", quantity),
+		ExecutedQuantity: fmt.Sprintf("%f", quantity),
+		Type:             binLib.OrderTypeMarket,
+		Status:           "FILLED",
+		TransactTime:     time.Now().Unix(),
+		Symbol:           symbol.String(),
+		Side:             binLib.SideTypeSell,
+		OrderID:          123,
+	}
+	return sellOrder, nil
 }
 
 var MockAccount = CreateMockAccount(getMock())

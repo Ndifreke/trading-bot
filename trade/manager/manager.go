@@ -64,15 +64,15 @@ func (tm *TradeManager) DoTrade() *TradeManager {
 
 func (tm *TradeManager) Execute(
 	config names.TradeConfig,
-	marketPrice float64,
+	spot float64,
 	basePrice float64,
 	done func()) {
 	var sold bool
 
 	if config.Side.IsBuy() {
-		sold = executor.BuyExecutor(config, marketPrice, basePrice).Execute()
+		sold = executor.BuyExecutor(config, spot, basePrice).Execute()
 	} else {
-		sold = executor.SellExecutor(config, marketPrice, basePrice).Execute()
+		sold = executor.SellExecutor(config, spot, basePrice).Execute()
 	}
 	if !sold {
 		return

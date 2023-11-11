@@ -1,28 +1,8 @@
-GMXUSDT := names.TradeConfig{
-		Symbol:    "CRVUSDT",
-		Side:      names.TradeSideSell,
-		IsCyclick: true,
-		Buy: names.SideConfig{
-			MustProfit: true,
-			LimitType:  names.RatePercent,
-			StopLimit:  2,
-			LockDelta:  50,
-			Quantity:   names.MAX_LIMIT,
-			DeviationSync: names.DeviationSync{
-				Delta: 95,
-			},
-		},
-		Sell: names.SideConfig{
-			MustProfit: true,
-			LimitType:  names.RatePercent,
-			StopLimit:  2,
-			LockDelta:  50,
-			Quantity:   names.MAX_LIMIT,
-			DeviationSync: names.DeviationSync{
-				Delta: 90,
-			},
-		},
-	}
+GET /pool/id #list pools (started, runningtime, id, tradescompleted, isrunning)
+GET /pools #list pools
+POST /pool/:id/stop #stop a pool and return the pool
+PUT /pool/:poolId/config/:configId/add #add a new config and start watching to a pool
+POST /pool/:poolId/config/:configId/stop #remove a config from a running pool
 
 
 traders.NewPeggedBestSide(peggedBestConfigs, names.TradeSideSell, traders.StatusFullfilment, peggedBestConfigs[0]).DoTrade()

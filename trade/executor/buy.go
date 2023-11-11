@@ -1,15 +1,14 @@
 package executor
 
 import (
-	"fmt"
+	// "fmt"
 	// "time"
-	tradeBinance "trading/binance"
+	// tradeBinance "trading/binance"
 	"trading/helper"
 	"trading/names"
 	"trading/user"
-	"trading/utils"
-
-	binance "github.com/adshao/go-binance/v2"
+	// "trading/utils"
+	// binance "github.com/adshao/go-binance/v2"
 )
 
 type buyExecutor executorType
@@ -40,57 +39,25 @@ func (exec buyExecutor) IsProfitable() bool {
 	return (exec.marketPrice + exec.fees.Value) < exec.tradeStartPrice
 }
 
-func buy(exec *buyExecutor) bool {
-	symbol := exec.config.Symbol
-	lastTradePrice := exec.tradeStartPrice
-	quoteBalance := user.CreateUser().GetAccount().GetBalance(symbol.ParseTradingPair().Quote)
-	quantity := exec.config.Sell.Quantity
+func buy(buy *buyExecutor) bool {
 
-	if quantity <= 0 {
-		quantity = symbol.Quantity(quoteBalance.Free / exec.marketPrice)
-	}
+	pretradePrice := buy.tradeStartPrice
+	account := user.CreateUser().GetAccount()
 
-	buyOrder := &binance.CreateOrderResponse{}
-
-	if utils.Env().IsTest() {
-		summary(
-			exec.config,
-			exec.config.Side,
-			exec.config.Symbol,
-			lastTradePrice,
-			exec.tradeStartPrice,
-			exec.marketPrice,
-			exec.marketPrice-lastTradePrice,
-			exec.fees,
-			exec.config.Buy.Quantity,
-			*buyOrder,
-		)
-		return utils.Env().SellTrue()
-	}
-
-	var err error
-	buyOrder, err = tradeBinance.CreateBuyMarketOrder(
-		exec.config.Symbol.String(),
-		quantity,
-	)
-
+	buyOrder, err := account.TradeBuyConfig(buy.config, buy.marketPrice)
 	if err != nil {
-		go utils.TextToSpeach("Buy error")
-		utils.LogError(err, fmt.Sprintf(
-			"Error  Buying %s,\n Supplied Qty=%f\n Calculated Qty=%f\n Quote Balance=%f", exec.config.Symbol, exec.config.Sell.Quantity, quantity, quoteBalance.Free))
 		return false
 	}
-
 	summary(
-		exec.config,
-		exec.config.Side,
-		exec.config.Symbol,
-		lastTradePrice,
-		exec.tradeStartPrice,
-		exec.marketPrice,
-		exec.marketPrice-lastTradePrice,
-		exec.fees,
-		exec.config.Buy.Quantity,
+		buy.config,
+		buy.config.Side,
+		buy.config.Symbol,
+		pretradePrice,
+		buy.tradeStartPrice,
+		buy.marketPrice,
+		buy.marketPrice-pretradePrice,
+		buy.fees,
+		buy.config.Buy.Quantity,
 		*buyOrder,
 	)
 	return true
@@ -98,12 +65,6 @@ func buy(exec *buyExecutor) bool {
 
 func (exec *buyExecutor) Execute() bool {
 	exec.fees = helper.GetTradeFee(exec.config, exec.marketPrice)
-
 	bought := buy(exec)
-	if bought {
-		// Pause for 1 second for the server executing server to complete the order
-		// TODO it would be nice to recursive check if this is filled
-		// time.Sleep(10 * time.Second)
-	}
 	return bought
 }
