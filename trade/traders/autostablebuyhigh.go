@@ -153,7 +153,7 @@ func (tm *autoStableBuyHigh) Done(tradedConfig names.TradeConfig, locker names.L
 
 	if exist && !removed {
 		utils.LogError(fmt.Errorf("removed but still exist tradedConfig config, ensure the config with id %s was called by <names.NewIdTradeConfigs>", tradedConfig.Id), "<autostable>")
-		log.Fatal("removed but still exist tradedConfig config, ensure the config with id %s was called by <names.NewIdTradeConfigs>", tradedConfig.Id)
+		log.Fatal("removed but still exist tradedConfig config, ensure the config with id was called by <names.NewIdTradeConfigs>", tradedConfig.Id)
 	}
 
 	if tm.status == StatusContention && tradedConfig.Side == names.TradeSideBuy {
