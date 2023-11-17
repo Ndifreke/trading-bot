@@ -21,6 +21,19 @@ func (e *env) IsMock() bool {
 	return os.Getenv("ENV") == "mock"
 }
 
+func (e *env) UseMockAccount() bool {
+	return os.Getenv("MOCK_ACCOUNT") == "true"
+}
+
+func (e *env) UseMockStream() bool {
+	return os.Getenv("MOCK_STREAM") == "true"
+}
+
+func (e *env) UseMockFees() bool {
+	return os.Getenv("MOCK_FEES") == "true"
+}
+
+
 func (e *env) IsPreventTrade() bool {
 	return os.Getenv("PREVENT_TRADE") == "true"
 }

@@ -40,7 +40,7 @@ type streamState struct {
 }
 
 func GetPriceStreamer(symbols []string, useAPI bool) StreamInterface {
-	if utils.Env().IsMock() {
+	if utils.Env().UseMockStream() {
 		return NewMockStream(symbols)
 	}
 	if useAPI {

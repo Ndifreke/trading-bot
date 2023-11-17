@@ -91,7 +91,8 @@ func (stable *stableutil) QuantityInBaseValue(account user.AccountInterface) flo
 
 // Calculate the quote asset value in terms of quantity
 func (stable *stableutil) QuantityInQuoteValue(account user.AccountInterface) float64 {
-	return stable.QuantityInBaseValue(stable.account) * stable.spotPrice
+	 baseQty := stable.QuantityInBaseValue(stable.account)
+	return baseQty * stable.spotPrice
 }
 
 // Get the value of Quotes including the Limit
@@ -319,7 +320,7 @@ func getStableTradeConfigs(configs []names.TradeConfig) []names.TradeConfig {
 
 	spotPrices, err := binance.GetSymbolPrices(symbolList)
 	if err != nil {
-		panic("ERROR>>>>")
+		panic("ERROR>>>>" )
 	}
 	updatedConfig := calculateConfigPeggedLimit(configs, spotPrices, takersFees, account)
 	return updatedConfig
@@ -337,6 +338,7 @@ type StableTradeParam struct {
 	Status             status          `json:"status"`
 	MinPriceChange     float64         `json:"minPriceChange"`
 	MaxPriceChange     float64         `json:"maxPriceChange"`
+	Side               names.TradeSide `json:"side"`
 }
 
 // Fetch a list of assets and decorate them
@@ -365,7 +367,7 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 			return tradingConfigs
 		}
 
-		for _, s := range stats {
+		for _, s := range stats[0:90] {
 			symbol := names.Symbol(s.Symbol)
 			change := s.PriceChangePercent
 			if symbol.ParseTradingPair().Quote == params.QuoteAsset && change > minimumPrice && change < maximumPrice {
@@ -390,10 +392,14 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 // Create a blueprint tradeConfig for this symbol using the params
 // Note this function does not assign a side to the newly created config
 func initConfig(symbol names.Symbol, params StableTradeParam) names.TradeConfig {
+	side := names.TradeSideBuy
+	if helper.SideIsValid(params.Side) {
+		side = params.Side
+	}
 	config := names.TradeConfig{
 		Symbol:    symbol,
 		IsCyclick: true,
-		Side:      names.TradeSideBuy,
+		Side:      side,
 		Buy: names.SideConfig{
 			MustProfit: true,
 			LimitType:  names.RatePercent,
@@ -413,7 +419,7 @@ func initConfig(symbol names.Symbol, params StableTradeParam) names.TradeConfig 
 			DeviationSync: names.DeviationSync{
 				Delta: params.SellDeviationDelta,
 			},
-		},
+		} ,
 	}
 	return config
 }
@@ -441,6 +447,19 @@ func generateStableParams(quoteAmount float64, quoteAsset string) StableTradePar
 		Status:             StatusContention,
 		MinPriceChange:     2,
 		MaxPriceChange:     20,
+	} 
+	refParam = StableTradeParam{
+		QuoteAsset: quoteAsset,
+		BuyStopLimit:       8,
+		BuyDeviationDelta:  5,
+		BuyLockDelta:       0.5,
+		SellStopLimit:      4,
+		SellDeviationDelta: 10,
+		SellLockDelta:      0.02,
+		BestSide:           names.TradeSideSell,
+		Status:             StatusContention,
+		MinPriceChange:     2,
+		MaxPriceChange:     20,
 	}
 	increase := (quoteAmount / baseAmount)
 	params := StableTradeParam{
@@ -456,7 +475,7 @@ func generateStableParams(quoteAmount float64, quoteAsset string) StableTradePar
 		MinPriceChange:     refParam.MinPriceChange,
 		MaxPriceChange:     refParam.MaxPriceChange,
 	}
-	// params := StableTradeParam{
+	// params = StableTradeParam{
 	// 	QuoteAsset: quoteAsset,
 	// 	BuyStopLimit:       8,
 	// 	BuyDeviationDelta:  5,

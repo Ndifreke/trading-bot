@@ -151,7 +151,7 @@ func (tm *autoStableBuyHigh) Done(tradedConfig names.TradeConfig, locker names.L
 	cfg, exist := tm.tradingConfigs.Find(tradedConfig.Id)
 	removed := tm.RemoveConfig(cfg)
 
-	if removed && exist {
+	if exist && !removed {
 		utils.LogError(fmt.Errorf("removed but still exist tradedConfig config, ensure the config with id %s was called by <names.NewIdTradeConfigs>", tradedConfig.Id), "<autostable>")
 		log.Fatal("removed but still exist tradedConfig config, ensure the config with id %s was called by <names.NewIdTradeConfigs>", tradedConfig.Id)
 	}
@@ -166,7 +166,7 @@ func (tm *autoStableBuyHigh) Done(tradedConfig names.TradeConfig, locker names.L
 		// is a chance that the values may be too high and the trade will not be exuted
 		// so we switch the side to other side which we presume will be lower and meant for redemption
 		// A stright forward solution will be to explicitly set the side to sell since this is an auto stable high trader
-		tradedConfig.Sell = tradedConfig.Buy
+		// tradedConfig.Sell = tradedConfig.Buy
 		tradedConfig.Sell.Quantity = names.MAX_QUANTITY
 
 		tm.status = StatusFullfilment
@@ -288,28 +288,21 @@ func NewAutoStableBuyHighTrader(initParams StableTradeParam) *manager.TradeManag
 		return &manager.TradeManager{}
 	}
 
-	tradeConfigs, _ = configsSideToContention(tradeConfigs, names.TradeSideBuy, names.TradeConfig{}, StatusContention)
 	tradeConfigs = getStableTradeConfigs(tradeConfigs)
+
+	mapFunc := func(cfg names.TradeConfig) names.TradeConfig {
+		cfg.Buy, cfg.Sell = cfg.Sell, cfg.Buy
+		return cfg
+	}
+	tradeConfigs = names.NewIdTradeConfigs(tradeConfigs...).Map(mapFunc)
 	trader := createAutoStableBuyHigh(initParams, tradeConfigs)
 	return manager.NewTradeManager(trader)
 }
 
 func NewAutoStableBuyHighExample(run bool) {
 	tradeParam := generateStableParams(160, "USDT")
-	reverseTradeParam := StableTradeParam{
-		QuoteAsset:         tradeParam.QuoteAsset,
-		BuyStopLimit:       tradeParam.SellStopLimit,
-		BuyDeviationDelta:  tradeParam.SellDeviationDelta,
-		SellLockDelta:      tradeParam.BuyLockDelta,
-		BuyLockDelta:       tradeParam.SellLockDelta,
-		SellStopLimit:      tradeParam.BuyStopLimit,
-		SellDeviationDelta: tradeParam.BuyDeviationDelta,
-		BestSide:           names.TradeSideSell,
-		Status:             StatusContention,
-		MinPriceChange:     tradeParam.MinPriceChange,
-		MaxPriceChange:     tradeParam.MaxPriceChange,
-	}
+	tradeParam.Side = names.TradeSideSell
 	if run {
-		NewAutoStableBuyHighTrader(reverseTradeParam).DoTrade()
+		NewAutoStableBuyHighTrader(tradeParam).DoTrade()
 	}
 }
