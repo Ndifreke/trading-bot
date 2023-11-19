@@ -123,6 +123,12 @@ func (cfgs TradeConfigs) Map(callback func(TradeConfig)TradeConfig) TradeConfigs
 	return updates
 }
 
+func (cfgs TradeConfigs) ForEach(callback func(TradeConfig))  {
+	for _, cfg := range cfgs {
+		callback(cfg)
+	}
+}
+
 type LockState struct {
 	StopLimit                   float64 // limit that price should not go below
 	Price                       float64 //only lock when it is upto a percent lock

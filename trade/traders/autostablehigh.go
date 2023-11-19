@@ -1,9 +1,6 @@
 package traders
 
 import (
-	// "fmt"
-	"fmt"
-	"log"
 	"sync"
 	"time"
 	"trading/binance"
@@ -12,15 +9,9 @@ import (
 	"trading/trade/deviation"
 	"trading/trade/graph"
 	"trading/trade/manager"
-	"trading/utils"
-
-	// "trading/utils"
-
 	"github.com/google/uuid"
 )
 
-//splits the balance of the trade between all the assets so that every asset takes
-// an equal percentage
 
 type autoStableBuyHigh struct {
 	initParams       StableTradeParam
@@ -113,7 +104,8 @@ func (tm *autoStableBuyHigh) isContentionTimeUp(config names.TradeConfig) bool {
 		cTime := value.(time.Time)
 
 		//todo we need to be sure this config does not exist already
-		if cTime.Minute()%16 < 14 {
+		minutes := cTime.Minute()
+		if minutes%16 < 14 {
 			//15 minute has not elapsed since this contention started
 			return false
 		}
@@ -148,25 +140,17 @@ func (tm *autoStableBuyHigh) isContentionTimeUp(config names.TradeConfig) bool {
 // TODO Rename to small letter done and remove from interface
 func (tm *autoStableBuyHigh) Done(tradedConfig names.TradeConfig, locker names.LockInterface) {
 
-	cfg, exist := tm.tradingConfigs.Find(tradedConfig.Id)
-	removed := tm.RemoveConfig(cfg)
-
-	if exist && !removed {
-		utils.LogError(fmt.Errorf("removed but still exist tradedConfig config, ensure the config with id %s was called by <names.NewIdTradeConfigs>", tradedConfig.Id), "<autostable>")
-		log.Fatal("removed but still exist tradedConfig config, ensure the config with id was called by <names.NewIdTradeConfigs>", tradedConfig.Id)
-	}
-
 	if tm.status == StatusContention && tradedConfig.Side == names.TradeSideBuy {
+
+		tm.tradingConfigs.ForEach(func(tc names.TradeConfig) {
+			tm.RemoveConfig(tc)
+		})
+
 		// change the side only after the config has been generated, this is to
 		// ensure that we reinit the config with the opposite side of the params
 		tradedConfig = renitTradeConfig(tradedConfig, tm.initParams)
 		tradedConfig.Side = names.TradeSideSell
 
-		// we cannot use the same side during contention for redemption there
-		// is a chance that the values may be too high and the trade will not be exuted
-		// so we switch the side to other side which we presume will be lower and meant for redemption
-		// A stright forward solution will be to explicitly set the side to sell since this is an auto stable high trader
-		// tradedConfig.Sell = tradedConfig.Buy
 		tradedConfig.Sell.Quantity = names.MAX_QUANTITY
 
 		tm.status = StatusFullfilment
@@ -177,13 +161,13 @@ func (tm *autoStableBuyHigh) Done(tradedConfig names.TradeConfig, locker names.L
 		tm.status = StatusContention
 		tm.fullfillId = ""
 
-		bestLock := tm.tradeLockManager.BestMatureLock()
-		if bestLock != nil && bestLock.IsRedemptionDue() {
-			// Check if any of the contention is due then do nothing,
-			// if there is a due lock it will most likely be traded into best side
-			// Hopefully the executor will handle it execution
-			return
-		}
+		// bestLock := tm.tradeLockManager.BestMatureLock()
+		// if bestLock != nil && bestLock.IsRedemptionDue() {
+		// 	// Check if any of the contention is due then do nothing,
+		// 	// if there is a due lock it will most likely be traded into best side
+		// 	// Hopefully the executor will handle it execution
+		// 	return
+		// }
 
 		// We could not find any lock that was in due state
 		// lets terminate all of them and start a new process
@@ -252,7 +236,12 @@ func (tm *autoStableBuyHigh) Watch(config names.TradeConfig) {
 	deviation := deviation.NewDeviationManager(tm, configLocker)
 
 	deviation.PreAddConfig(func(config names.TradeConfig) names.TradeConfig {
-		return renitTradeConfig(config, tm.initParams)
+		status := tm.status
+		cfg := renitTradeConfig(config, tm.initParams)
+		if status == StatusContention{
+			cfg.Buy, cfg.Sell = cfg.Sell, cfg.Buy
+		}
+		return cfg
 	})
 
 	for sub := range subscription.GetChannel() {
@@ -261,22 +250,8 @@ func (tm *autoStableBuyHigh) Watch(config names.TradeConfig) {
 			continue
 		}
 
-		if tm.status == StatusFullfilment && tm.fullfillId != config.Id {
-			// during fullfilment don't allow none fullfuling config to deviate else
-			// if balance changes by fullfuling config the resulting config from deviation
-			// will get into a state that is not wanted
-		} else {
-			deviation.CheckDeviation(&subscription)
-		}
-
+		deviation.CheckDeviation(&subscription)
 		configLocker.TryLockPrice(sub.Price)
-
-		if tm.status == StatusFullfilment && tm.fullfillId != subscription.State().TradingConfig.Id {
-			configLocker.SetVerbose(false)
-		} else {
-			configLocker.SetVerbose(true)
-		}
-
 	}
 }
 
@@ -300,7 +275,7 @@ func NewAutoStableBuyHighTrader(initParams StableTradeParam) *manager.TradeManag
 }
 
 func NewAutoStableBuyHighExample(run bool) {
-	tradeParam := generateStableParams(160, "USDT")
+	tradeParam := generateStableParams(100, "USDT")
 	tradeParam.Side = names.TradeSideSell
 	if run {
 		NewAutoStableBuyHighTrader(tradeParam).DoTrade()

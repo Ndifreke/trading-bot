@@ -19,14 +19,24 @@ type AccountMock struct {
 	account  *binLib.Account
 }
 
-func getMock() AccountMock {
+func getEnvBalance() map[string]float64 {
+	env :=  utils.Env()
+	b :=  map[string]float64{
+			"BTC":  env.BASE_BALANCE(),
+			"USDT": env.QUOTE_BALANCE(),
+			"BNB": env.QUOTE_BALANCE(),
+	}
+	return b
+}
+
+func CreateMockBalance(balance map[string]float64) AccountMock {
+	bb := make( map[string]Balance)
+	for symbol,free := range balance{
+		bb[symbol] = Balance{Free: free}
+	}
 	utils.LoadMyEnvFile()
 	b := AccountMock{
-		balances: map[string]Balance{
-			"BTC":  {Free: utils.Env().BASE_BALANCE()},
-			"USDT": {Free: utils.Env().QUOTE_BALANCE()},
-			"BNB":  {Free: utils.Env().QUOTE_BALANCE()},
-		},
+		balances: bb,
 	}
 	return b
 }
@@ -175,4 +185,4 @@ func (mock *AccountMock) TradeSellConfig(config names.TradeConfig, spot float64)
 	return sellOrder, nil
 }
 
-var MockAccount = CreateMockAccount(getMock())
+var MockAccount = CreateMockAccount(CreateMockBalance(getEnvBalance()))

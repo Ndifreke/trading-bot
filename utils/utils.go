@@ -21,18 +21,21 @@ func (e *env) IsMock() bool {
 	return os.Getenv("ENV") == "mock"
 }
 
-func (e *env) UseMockAccount() bool {
+func (e *env) IsMockAccount() bool {
 	return os.Getenv("MOCK_ACCOUNT") == "true"
 }
 
-func (e *env) UseMockStream() bool {
+func (e *env) SetMockAccount() {
+	os.Setenv("MOCK_ACCOUNT","true")
+}
+
+func (e *env) IsMockStream() bool {
 	return os.Getenv("MOCK_STREAM") == "true"
 }
 
-func (e *env) UseMockFees() bool {
+func (e *env) IsMockFees() bool {
 	return os.Getenv("MOCK_FEES") == "true"
 }
-
 
 func (e *env) IsPreventTrade() bool {
 	return os.Getenv("PREVENT_TRADE") == "true"
@@ -53,8 +56,15 @@ func (e *env) GetEnv() bool {
 func (e *env) SellTrue() bool {
 	return len(os.Getenv("ALWAY_SELL")) > 0
 }
+
 func (e *env) SetModeMock() {
-	os.Setenv("ENV", "mock")
+	 os.Setenv("ENV", "mock")
+	 *e = "mock"
+}
+
+func (e *env) SetTestMode() {
+	e.SetModeMock()
+	e.SetMockAccount()
 }
 
 func Env() *env {

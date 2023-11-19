@@ -258,26 +258,6 @@ func calculateConfigPeggedLimit(configs []names.TradeConfig, spotPriceList map[s
 	return updatedConfigs
 }
 
-func getUpdateWithPeggedLimit(configs []names.TradeConfig) []names.TradeConfig {
-	account := user.GetAccount()
-	symbolList := names.TradeConfigs(configs).ListSymbol()
-	fees := names.GetTradeFees(symbolList)
-
-	takersFees := make(map[string]float64)
-	for symbol, fee := range fees {
-		takersFees[symbol] = fee.TakerCommission
-	}
-
-	// convertDeltaStop to percentage implementation, remove old implementation
-
-	spotPrices, err := binance.GetSymbolPrices(symbolList)
-	if err != nil {
-		panic("ERROR>>>>")
-	}
-	updatedConfig := calculateConfigPeggedLimit(configs, spotPrices, takersFees, account)
-	return updatedConfig
-}
-
 func (fiat *stableutil) CalculateFiatLockDelta() float64 {
 	sideConfig := fiat.getCalculateSideConfig()
 	lockDelta := sideConfig.LockDelta
@@ -367,7 +347,7 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 			return tradingConfigs
 		}
 
-		for _, s := range stats[0:90] {
+		for _, s := range stats {
 			symbol := names.Symbol(s.Symbol)
 			change := s.PriceChangePercent
 			if symbol.ParseTradingPair().Quote == params.QuoteAsset && change > minimumPrice && change < maximumPrice {

@@ -145,13 +145,6 @@ func (lock *peakHigh) TryLockPrice(price float64) {
 	}
 }
 
-// best Mature Lock attempts to retrieve the best lock from the list managed
-// by lock manager. The sentinels are based on is it maturity, is it prioritySide, is it highest percentage increase
-func (l *peakHigh) bestMatureLock() names.LockInterface {
-	return l.GetLockManager().BestMatureLock() //3
-
-}
-
 // determines if it is the most profitable lock from other locks of similar action
 func (lock *peakHigh) IsRedemptionCandidate() bool {
 	manager := lock.GetLockManager()
@@ -162,7 +155,8 @@ func (lock *peakHigh) IsRedemptionCandidate() bool {
 
 // Checks if this lock is mature on it own
 func (lock *peakHigh) IsRedemptionDue() bool {
-	return lock.redemptionIsMature
+	isDue := lock.redemptionIsMature
+	return isDue
 }
 
 func (l *peakHigh) SetRedemptionDueCallback(cb func(lock names.LockInterface)) { //maturecallback
@@ -173,10 +167,10 @@ func (l *peakHigh) SetRedemptionCandidateCallback(cb func(lock names.LockInterfa
 	l.maturityCandidateCallback = cb
 }
 
-// Total amount of units of price delta that has been locked in
-func (lock peakHigh) getLockedUnits(config names.TradeConfig) float64 {
-	return (lock.gainsAccrude - lock.GetTradeLimit()) / lock.getMinimumLockUnit()
-}
+// // Total amount of units of price delta that has been locked in
+// func (lock peakHigh) getLockedUnits(config names.TradeConfig) float64 {
+// 	return (lock.gainsAccrude - lock.GetTradeLimit()) / lock.getMinimumLockUnit()
+// }
 
 func (lock peakHigh) TradeSide() names.TradeSide {
 	return lock.tradeConfig.Side
