@@ -58,7 +58,7 @@ func GetTradeFees(symbols []string) map[string]tradeFeeDetails {
 	wg.Add(len(symbols))
 	for _, symbol := range symbols {
 		go func(s string) {
-			if utils.Env().IsTest() {
+			if utils.Env().IsMockFees() {
 
 				rwLock.Lock()
 

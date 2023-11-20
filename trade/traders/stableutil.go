@@ -3,6 +3,7 @@ package traders
 // Buy order = Quote asset
 // Sell order = Base asset
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"trading/binance"
@@ -27,7 +28,7 @@ type stableutil struct {
 	config         names.TradeConfig
 	calculatedSide names.TradeSide
 	commision      float64
-	account        user.Accounter
+	account        user.AccountInterface
 }
 
 func newStable(spotPrice float64, config names.TradeConfig, calculateSide names.TradeSide) stableutil {
@@ -39,7 +40,7 @@ func (stable *stableutil) UseCommision(commision float64) *stableutil {
 	return stable
 }
 
-func (stable *stableutil) UseAccount(account user.Accounter) *stableutil {
+func (stable *stableutil) UseAccount(account user.AccountInterface) *stableutil {
 	stable.account = account
 	return stable
 }
@@ -65,7 +66,7 @@ func (stable *stableutil) getCalculateSideConfig() names.SideConfig {
 }
 
 // Calculate the quantity of the calculated side in base value of the trading pairs
-func (stable *stableutil) QuantityInBaseValue(account user.Accounter) float64 {
+func (stable *stableutil) QuantityInBaseValue(account user.AccountInterface) float64 {
 	symbol := stable.config.Symbol
 	sideConfig := stable.getCalculateSideConfig()
 	quantity := sideConfig.Quantity
@@ -73,14 +74,14 @@ func (stable *stableutil) QuantityInBaseValue(account user.Accounter) float64 {
 	side := stable.calculatedSide
 
 	if side.IsSell() && quantity < 0 {
-		quantity = account.GetBalance(baseAsset).Locked
+		quantity = account.GetBalance(baseAsset).Free
 	}
 
 	if side.IsBuy() {
 		// in Buy action the quote quontity is always supplied
 		quoteAsset := symbol.ParseTradingPair().Quote
 		if quantity < 0 {
-			quantity = account.GetBalance(quoteAsset).Locked
+			quantity = account.GetBalance(quoteAsset).Free
 		}
 		quantity = (quantity / stable.spotPrice)
 	}
@@ -89,8 +90,9 @@ func (stable *stableutil) QuantityInBaseValue(account user.Accounter) float64 {
 }
 
 // Calculate the quote asset value in terms of quantity
-func (stable *stableutil) QuantityInQuoteValue(account user.Accounter) float64 {
-	return stable.QuantityInBaseValue(stable.account) * stable.spotPrice
+func (stable *stableutil) QuantityInQuoteValue(account user.AccountInterface) float64 {
+	 baseQty := stable.QuantityInBaseValue(stable.account)
+	return baseQty * stable.spotPrice
 }
 
 // Get the value of Quotes including the Limit
@@ -228,7 +230,7 @@ func (fiat *stableutil) CalculateFiatDeviation() float64 {
 // Takes into account available trading asset balance, current quote price, commission percentage, and peggedcoin limit.
 // Returns the updated trade configuration.
 
-func calculateConfigPeggedLimit(configs []names.TradeConfig, spotPriceList map[string]float64, takersFees map[string]float64, account user.Accounter) []names.TradeConfig {
+func calculateConfigPeggedLimit(configs []names.TradeConfig, spotPriceList map[string]float64, takersFees map[string]float64, account user.AccountInterface) []names.TradeConfig {
 	updatedConfigs := []names.TradeConfig{}
 	// configsIncrease := make(map[string]map[names.TradeSide]float64)
 	sides := []names.TradeSide{names.TradeSideBuy, names.TradeSideSell}
@@ -254,26 +256,6 @@ func calculateConfigPeggedLimit(configs []names.TradeConfig, spotPriceList map[s
 		updatedConfigs = append(updatedConfigs, updatedConfig)
 	}
 	return updatedConfigs
-}
-
-func getUpdateWithPeggedLimit(configs []names.TradeConfig) []names.TradeConfig {
-	account := user.GetAccount()
-	symbolList := names.TradeConfigs(configs).ListSymbol()
-	fees := names.GetTradeFees(symbolList)
-
-	takersFees := make(map[string]float64)
-	for symbol, fee := range fees {
-		takersFees[symbol] = fee.TakerCommission
-	}
-
-	// convertDeltaStop to percentage implementation, remove old implementation
-
-	spotPrices, err := binance.GetSymbolPrices(symbolList)
-	if err != nil {
-		panic("ERROR>>>>")
-	}
-	updatedConfig := calculateConfigPeggedLimit(configs, spotPrices, takersFees, account)
-	return updatedConfig
 }
 
 func (fiat *stableutil) CalculateFiatLockDelta() float64 {
@@ -318,24 +300,25 @@ func getStableTradeConfigs(configs []names.TradeConfig) []names.TradeConfig {
 
 	spotPrices, err := binance.GetSymbolPrices(symbolList)
 	if err != nil {
-		panic("ERROR>>>>")
+		panic("ERROR>>>>" )
 	}
 	updatedConfig := calculateConfigPeggedLimit(configs, spotPrices, takersFees, account)
 	return updatedConfig
 }
 
 type StableTradeParam struct {
-	QuoteAsset         string
-	SellDeviationDelta float64
-	SellStopLimit      float64
-	SellLockDelta      float64
-	BuyDeviationDelta  float64
-	BuyStopLimit       float64
-	BuyLockDelta       float64
-	BestSide           names.TradeSide
-	Status             status
-	MinPriceChange     float64
-	MaxPriceChange     float64
+	QuoteAsset         string          `json:"quoteAsset"`
+	SellDeviationDelta float64         `json:"sellDeviationDelta"`
+	SellStopLimit      float64         `json:"sellStopLimit"`
+	SellLockDelta      float64         `json:"sellLockDelta"`
+	BuyDeviationDelta  float64         `json:"buyDeviationDelta"`
+	BuyStopLimit       float64         `json:"buyStopLimit"`
+	BuyLockDelta       float64         `json:"buyLockDelta"`
+	BestSide           names.TradeSide `json:"bestSide"`
+	Status             status          `json:"status"`
+	MinPriceChange     float64         `json:"minPriceChange"`
+	MaxPriceChange     float64         `json:"maxPriceChange"`
+	Side               names.TradeSide `json:"side"`
 }
 
 // Fetch a list of assets and decorate them
@@ -343,9 +326,8 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 	var symbols []names.Symbol
 	var tradingConfigs []names.TradeConfig
 
-	if utils.Env().IsTest() {
-		symbols = []names.Symbol{"BTCUSDT"} //"BNBUSDT"
-
+	if utils.Env().IsMock() {
+		symbols = []names.Symbol{"BTCUSDT", "BNBUSDT"}
 	} else {
 		stats := binance.GetSymbolStats()
 		// We select asset with at most 2% and increase, this
@@ -382,32 +364,112 @@ func GenerateStableTradeConfigs(params StableTradeParam) []names.TradeConfig {
 	}
 
 	for _, Symbol := range symbols {
-
-		config := names.TradeConfig{
-			Symbol: Symbol,
-			Buy: names.SideConfig{
-				MustProfit: true,
-				LimitType:  names.RatePercent,
-				LockDelta:  params.BuyLockDelta,
-				Quantity:   names.MAX_QUANTITY,
-				StopLimit:  params.BuyStopLimit,
-				DeviationSync: names.DeviationSync{
-					Delta: params.BuyDeviationDelta,
-				},
-			},
-			Sell: names.SideConfig{
-				MustProfit: true,
-				LimitType:  names.RatePercent,
-				LockDelta:  params.SellLockDelta,
-				Quantity:   names.MAX_QUANTITY,
-				StopLimit:  params.SellStopLimit,
-				DeviationSync: names.DeviationSync{
-					Delta: params.SellDeviationDelta,
-				},
-			},
-		}
-		tradingConfigs = append(tradingConfigs, config)
+		tradingConfigs = append(tradingConfigs, initConfig(Symbol, params))
 	}
 	return tradingConfigs
 }
 
+// Create a blueprint tradeConfig for this symbol using the params
+// Note this function does not assign a side to the newly created config
+func initConfig(symbol names.Symbol, params StableTradeParam) names.TradeConfig {
+	side := names.TradeSideBuy
+	if helper.SideIsValid(params.Side) {
+		side = params.Side
+	}
+	config := names.TradeConfig{
+		Symbol:    symbol,
+		IsCyclick: true,
+		Side:      side,
+		Buy: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			LockDelta:  params.BuyLockDelta,
+			Quantity:   names.MAX_QUANTITY,
+			StopLimit:  params.BuyStopLimit,
+			DeviationSync: names.DeviationSync{
+				Delta: params.BuyDeviationDelta,
+			},
+		},
+		Sell: names.SideConfig{
+			MustProfit: true,
+			LimitType:  names.RatePercent,
+			LockDelta:  params.SellLockDelta,
+			Quantity:   names.MAX_QUANTITY,
+			StopLimit:  params.SellStopLimit,
+			DeviationSync: names.DeviationSync{
+				Delta: params.SellDeviationDelta,
+			},
+		} ,
+	}
+	return config
+}
+
+// re-initialise this trade config as stable using the init param maintining the configs, Id, Side, symbol
+func renitTradeConfig(config names.TradeConfig, initParams StableTradeParam) names.TradeConfig {
+	cfg := initConfig(config.Symbol, initParams)
+	cfg.Id = config.Id
+	cfg.Side = config.Side
+	stableConfig := getStableTradeConfigs(names.NewIdTradeConfigs(cfg))
+	return stableConfig[0]
+}
+
+func generateStableParams(quoteAmount float64, quoteAsset string) StableTradeParam {
+	baseAmount := 900.0
+	refParam := StableTradeParam{
+		QuoteAsset:         quoteAsset,
+		BuyStopLimit:       30,
+		BuyDeviationDelta:  10,
+		BuyLockDelta:       0.5,
+		SellStopLimit:      8,
+		SellDeviationDelta: 20,
+		SellLockDelta:      0.02,
+		BestSide:           names.TradeSideSell,
+		Status:             StatusContention,
+		MinPriceChange:     2,
+		MaxPriceChange:     20,
+	} 
+	refParam = StableTradeParam{
+		QuoteAsset: quoteAsset,
+		BuyStopLimit:       8,
+		BuyDeviationDelta:  5,
+		BuyLockDelta:       0.5,
+		SellStopLimit:      4,
+		SellDeviationDelta: 10,
+		SellLockDelta:      0.02,
+		BestSide:           names.TradeSideSell,
+		Status:             StatusContention,
+		MinPriceChange:     2,
+		MaxPriceChange:     20,
+	}
+	increase := (quoteAmount / baseAmount)
+	params := StableTradeParam{
+		QuoteAsset:         quoteAsset,
+		BuyStopLimit:       refParam.BuyStopLimit * increase,
+		BuyDeviationDelta:  refParam.BuyDeviationDelta * increase,
+		SellLockDelta:      refParam.SellLockDelta * increase,
+		BuyLockDelta:       refParam.BuyLockDelta * increase,
+		SellStopLimit:      refParam.SellStopLimit * increase,
+		SellDeviationDelta: refParam.SellDeviationDelta * increase,
+		BestSide:           names.TradeSideSell,
+		Status:             StatusContention,
+		MinPriceChange:     refParam.MinPriceChange,
+		MaxPriceChange:     refParam.MaxPriceChange,
+	}
+	// params = StableTradeParam{
+	// 	QuoteAsset: quoteAsset,
+	// 	BuyStopLimit:       8,
+	// 	BuyDeviationDelta:  5,
+	// 	BuyLockDelta:       0.5,
+	// 	SellStopLimit:      4,
+	// 	SellDeviationDelta: 10,
+	// 	SellLockDelta:      0.02,
+	// 	BestSide:           names.TradeSideSell,
+	// 	Status:             StatusContention,
+	// 	MinPriceChange:     2,
+	// 	MaxPriceChange:     20,
+	// }
+
+	r, e := json.MarshalIndent(params, "", "    ")
+	fmt.Println(string(r), e)
+	return params
+}

@@ -1,9 +1,9 @@
 package user
 
-type Balance struct{
-	Free float64
+type Balance struct {
 	Locked float64
-	Asset string
+	Free   float64
+	Asset  string
 }
 
 func NewBalance() {}

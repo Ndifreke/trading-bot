@@ -30,9 +30,9 @@ func GetPriceAverage(symbol string) api.RequestResponse[PriceJson] {
 }
 
 func GetPriceLatest(symbol string) float64 {
-	if utils.Env().IsTest() {
-		return utils.Env().RandomNumber()
-	}
+	// if utils.Env().IsMock() {
+	// 	return utils.Env().RandomNumber()
+	// }
 	price, error := GetClient().NewListPricesService().Symbol(symbol).Do(context.Background())
 	if error != nil {
 		utils.LogError(error, "Get Price Latest %s")
@@ -55,13 +55,13 @@ func RequestChannel(chan int) {
 
 func GetSymbolPrices(symbols []string) (map[string]float64, error) {
 
-	if utils.Env().IsTest() {
-		var prices = make(map[string]float64)
-		for _, sym := range symbols {
-			prices[sym] = utils.Env().RandomNumber()
-		}
-		return prices, nil
-	}
+	// if utils.Env().IsMock() {
+	// 	var prices = make(map[string]float64)
+	// 	for _, sym := range symbols {
+	// 		prices[sym] = utils.Env().RandomNumber()
+	// 	}
+	// 	return prices, nil
+	// }
 
 	var postRunPrices = make(map[string]float64)
 	prices, err := GetClient().NewListPricesService().Symbols(symbols).Do(context.Background())

@@ -39,8 +39,8 @@ type KLineInterface interface {
 
 func NewKline(symbol, interval string, limit int) KLineInterface {
 	//#MOCK
-	if utils.Env().IsTest(){
-		return GetKLineMock(MockKLineData);
+	if utils.Env().IsMock() {
+		return GetKLineMock(MockKLineData)
 	}
 	if interval == "" {
 		interval = "15m"

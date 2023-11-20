@@ -115,6 +115,20 @@ func (cfgs TradeConfigs) Find(id string) (TradeConfig, bool) {
 	return TradeConfig{}, false
 }
 
+func (cfgs TradeConfigs) Map(callback func(TradeConfig)TradeConfig) TradeConfigs {
+	updates := []TradeConfig{}
+	for _, cfg := range cfgs {
+		updates = append(updates, callback(cfg))
+	}
+	return updates
+}
+
+func (cfgs TradeConfigs) ForEach(callback func(TradeConfig))  {
+	for _, cfg := range cfgs {
+		callback(cfg)
+	}
+}
+
 type LockState struct {
 	StopLimit                   float64 // limit that price should not go below
 	Price                       float64 //only lock when it is upto a percent lock
@@ -136,6 +150,7 @@ type LockInterface interface {
 	AbsoluteGrowthPercent() float64
 	RelativeGrowthPercent() float64
 	TryLockPrice(price float64)
+	SetVerbose(verbose bool)
 	TradeSide() TradeSide
 	IsRedemptionDue() bool
 	GetLockManager() LockManagerInterface
@@ -152,6 +167,8 @@ type LockManagerInterface interface {
 	SetLockCreator(LockCreatorFunc)
 	RetrieveLock(config TradeConfig) LockInterface
 	RemoveLock(lock LockInterface) bool
+	RemoveLocks() bool
+	RetrieveLocks() map[Symbol]LockInterface
 }
 
 type ExecutorFunc = func(

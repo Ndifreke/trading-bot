@@ -1,29 +1,18 @@
-GMXUSDT := names.TradeConfig{
-		Symbol:    "CRVUSDT",
-		Side:      names.TradeSideSell,
-		IsCyclick: true,
-		Buy: names.SideConfig{
-			MustProfit: true,
-			LimitType:  names.RatePercent,
-			StopLimit:  2,
-			LockDelta:  50,
-			Quantity:   names.MAX_LIMIT,
-			DeviationSync: names.DeviationSync{
-				Delta: 95,
-			},
-		},
-		Sell: names.SideConfig{
-			MustProfit: true,
-			LimitType:  names.RatePercent,
-			StopLimit:  2,
-			LockDelta:  50,
-			Quantity:   names.MAX_LIMIT,
-			DeviationSync: names.DeviationSync{
-				Delta: 90,
-			},
-		},
-	}
+GET /pool/id #list pools (started, runningtime, id, tradescompleted, isrunning)
+GET /pools #list pools
+POST /pool/:id/stop #stop a pool and return the pool
+PUT /pool/:poolId/config/:configId/add #add a new config and start watching to a pool
+POST /pool/:poolId/config/:configId/stop #remove a config from a running pool
 
 
 traders.NewPeggedBestSide(peggedBestConfigs, names.TradeSideSell, traders.StatusFullfilment, peggedBestConfigs[0]).DoTrade()
 //it should use 90 of sell as delta since peggedBestConfigs[0]
+
+A small contention deviation will catch possible dumps this configuration should not be used with a max and min that targets high increase symbols
+this kind of configuration has the potential to bounce back immediately but not fully
+
+A large contention deviation will capture a slow downtrend
+We can introduce a concept of contention time and use it to ensure that a large contention does not stay longer than
+specified time before deviating or traded. This with large deviation will avoid buying a slow down trend this is know 
+to not have the power to bounce back as expected
+

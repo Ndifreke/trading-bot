@@ -4,7 +4,7 @@ type User struct {
 	firstname  string
 	lastname   string
 	middlename string
-	account    Account
+	account    AccountInterface
 }
 
 func CreateUser() *User {
@@ -13,10 +13,10 @@ func CreateUser() *User {
 		firstname:  firstname,
 		lastname:   lastname,
 		middlename: middlename,
-		account:    *GetAccount(),
+		account:    GetAccount(),
 	}
 }
 
-func (user *User) GetAccount() *Account {
-	return &user.account
+func (user *User) GetAccount() AccountInterface {
+	return user.account
 }

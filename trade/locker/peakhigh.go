@@ -19,6 +19,7 @@ type peakHigh struct {
 	lockManager               names.LockManagerInterface
 	maturityCallback          func(names.LockInterface)
 	maturityCandidateCallback func(names.LockInterface)
+	verbose                   bool
 }
 
 var PeakHighLockCreator = func(price float64, tradeConfig names.TradeConfig, redemptionIsMature bool, pretradePrice float64, lockManager names.LockManagerInterface, gainsAccrude float64) names.LockInterface {
@@ -29,12 +30,17 @@ var PeakHighLockCreator = func(price float64, tradeConfig names.TradeConfig, red
 		pretradePrice:      pretradePrice,
 		lockManager:        lockManager,
 		gainsAccrude:       gainsAccrude,
+		verbose:            true,
 	}
 }
 
 // GetTradeLimit returns the stop loss limit for the lock.
 func (lock *peakHigh) RemoveFromManager() bool {
 	return lock.lockManager.RemoveLock(lock)
+}
+
+func (lock *peakHigh) SetVerbose(verbose bool) {
+	lock.verbose = verbose
 }
 
 // GetTradeLimit returns the stop loss limit for the lock.
@@ -92,7 +98,7 @@ func (lock peakHigh) RelativeGrowthPercent() float64 {
 func (lock *peakHigh) getMinimumLockUnit() float64 {
 	// LockUnit is derived as the product of stopLossLimit and the percentage
 	// represented by lockDelta
-	if lock.tradeConfig.Side.IsBuy(){
+	if lock.tradeConfig.Side.IsBuy() {
 		return lock.pretradePrice * (lock.tradeConfig.Buy.LockDelta / 100)
 	}
 	return lock.pretradePrice * (lock.tradeConfig.Sell.LockDelta / 100)
@@ -126,7 +132,9 @@ func (lock *peakHigh) TryLockPrice(price float64) {
 		}
 	}
 
-	logLock(lock)
+	if lock.verbose {
+		logLock(lock)
+	}
 
 	if lock.maturityCallback != nil && lock.IsRedemptionDue() {
 		lock.maturityCallback(lock)
@@ -135,13 +143,6 @@ func (lock *peakHigh) TryLockPrice(price float64) {
 	if lock.maturityCandidateCallback != nil && lock.IsRedemptionCandidate() {
 		lock.maturityCandidateCallback(lock)
 	}
-}
-
-// best Mature Lock attempts to retrieve the best lock from the list managed
-// by lock manager. The sentinels are based on is it maturity, is it prioritySide, is it highest percentage increase
-func (l *peakHigh) bestMatureLock() names.LockInterface {
-	return l.GetLockManager().BestMatureLock() //3
-
 }
 
 // determines if it is the most profitable lock from other locks of similar action
@@ -154,7 +155,8 @@ func (lock *peakHigh) IsRedemptionCandidate() bool {
 
 // Checks if this lock is mature on it own
 func (lock *peakHigh) IsRedemptionDue() bool {
-	return lock.redemptionIsMature
+	isDue := lock.redemptionIsMature
+	return isDue
 }
 
 func (l *peakHigh) SetRedemptionDueCallback(cb func(lock names.LockInterface)) { //maturecallback
@@ -165,10 +167,10 @@ func (l *peakHigh) SetRedemptionCandidateCallback(cb func(lock names.LockInterfa
 	l.maturityCandidateCallback = cb
 }
 
-// Total amount of units of price delta that has been locked in
-func (lock peakHigh) getLockedUnits(config names.TradeConfig) float64 {
-	return (lock.gainsAccrude - lock.GetTradeLimit()) / lock.getMinimumLockUnit()
-}
+// // Total amount of units of price delta that has been locked in
+// func (lock peakHigh) getLockedUnits(config names.TradeConfig) float64 {
+// 	return (lock.gainsAccrude - lock.GetTradeLimit()) / lock.getMinimumLockUnit()
+// }
 
 func (lock peakHigh) TradeSide() names.TradeSide {
 	return lock.tradeConfig.Side

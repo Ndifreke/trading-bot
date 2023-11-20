@@ -30,8 +30,8 @@ type infoService struct {
 }
 
 func GetNewInfo() infoService {
+	data, _ := binance.GetClient().NewExchangeInfoService().Do(context.Background())
 	getInfo := func() binLib.ExchangeInfo {
-		data, _ := binance.GetClient().NewExchangeInfoService().Do(context.Background())
 		return *data
 	}
 	info := getInfo()

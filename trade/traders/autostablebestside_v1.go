@@ -93,6 +93,9 @@ func (t *autoStableBestSide) RemoveConfig(config names.TradeConfig) bool {
 		}
 	}
 	t.contentionConfigs = updatedConfigs
+	if removed {
+		t.tradeLockManager.RetrieveLock(config).RemoveFromManager()
+	}
 	return removed
 }
 
@@ -186,7 +189,7 @@ func (trader *autoStableBestSide) Watch(config names.TradeConfig) {
 
 	deviation := deviation.NewDeviationManager(trader, configLocker)
 
-	deviation.PostAddConfig(func(config names.TradeConfig) names.TradeConfig {
+	deviation.PreAddConfig(func(config names.TradeConfig) names.TradeConfig {
 		// search this config from the initConfig. Note the initConfig is a blueprint
 		// from which other stableTradeConfig can be created from. It represent the users
 		// intent in stable asset and not the percentage or fixed value that can be used by a
@@ -199,7 +202,6 @@ func (trader *autoStableBestSide) Watch(config names.TradeConfig) {
 		stableConfig := getStableTradeConfigs(names.NewIdTradeConfigs(cfg))
 		return stableConfig[0]
 	})
-
 
 	for sub := range subscription.GetChannel() {
 		// if trader.status == StatusContention {
@@ -227,11 +229,11 @@ func createAutoStable_v1(params StableTradeParam, bestSide names.TradeSide, stat
 	//GET update with stable limit also does what we are trying to avoid above
 	contentionConfigs := getStableTradeConfigs(initConfigs)
 	if status == StatusFullfilment {
-		
+
 		//Decorate the config thats needs to be fullfilled
 		initConfigs = names.NewIdTradeConfigs(fullfilConfig)
 		fullfilConfig = getStableTradeConfigs(initConfigs)[0]
-		
+
 	}
 
 	autoStableBestSide := getAutoStableSideTrader(initConfigs, params, contentionConfigs, bestSide, status, fullfilConfig)
@@ -253,4 +255,13 @@ func NewAutoStableBestSide(params StableTradeParam) *manager.TradeManager {
 		return &manager.TradeManager{}
 	}
 	return createAutoStable_v1(params, bestSide, status, contentionConfigs[0])
+}
+
+func NewAutoStableBestSideExample(run bool) {
+	if !run {
+		return
+	}
+	tradeParam := generateStableParams(300, "USDT")
+	NewAutoStableBestSide(tradeParam).DoTrade()
+
 }

@@ -2,11 +2,12 @@ package stream
 
 import (
 	"fmt"
-	"github.com/adshao/go-binance/v2"
 	"strconv"
 	"sync"
 	"time"
 	"trading/utils"
+
+	"github.com/adshao/go-binance/v2"
 )
 
 type Socket struct {
@@ -36,7 +37,7 @@ func NewSocketStream(symbols []string) StreamInterface {
 
 func readSocketDataDispatch(s *Socket) {
 
-	if utils.Env().IsTest() {
+	if utils.Env().IsMock() {
 		go func() {
 			symbolCount := len(s.symbols)
 			for i := 0; i < symbolCount; i++ {

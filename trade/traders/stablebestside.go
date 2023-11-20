@@ -83,7 +83,6 @@ func (t *stableBestSide) RemoveConfig(config names.TradeConfig) bool {
 			return removed
 		}
 	}
-	
 
 	updatedConfigs := []names.TradeConfig{}
 	for _, tc := range t.contentionConfigs {
@@ -94,6 +93,9 @@ func (t *stableBestSide) RemoveConfig(config names.TradeConfig) bool {
 		}
 	}
 	t.contentionConfigs = updatedConfigs
+	if removed {
+		t.tradeLockManager.RetrieveLock(config).RemoveFromManager()
+	}
 	return removed
 }
 
@@ -107,7 +109,7 @@ func (t *stableBestSide) AddConfig(config names.TradeConfig) {
 	} else {
 		t.contentionConfigs = append(t.contentionConfigs, config)
 	}
-	
+
 	go t.Watch(config)
 }
 
@@ -184,8 +186,7 @@ func (trader *stableBestSide) Watch(config names.TradeConfig) {
 
 	deviation := deviation.NewDeviationManager(trader, configLocker)
 
-	
-	deviation.PostAddConfig(func(config names.TradeConfig) names.TradeConfig {
+	deviation.PreAddConfig(func(config names.TradeConfig) names.TradeConfig {
 		// search this config from the initConfig. Note the initConfig is a blueprint
 		// from which other stableTradeConfig can be created from. It represent the users
 		// intent in stable asset and not the percentage or fixed value that can be used by a
@@ -198,8 +199,6 @@ func (trader *stableBestSide) Watch(config names.TradeConfig) {
 		stableConfig := getStableTradeConfigs(names.NewIdTradeConfigs(cfg))
 		return stableConfig[0]
 	})
-
-	
 
 	for sub := range subscription.GetChannel() {
 		if trader.status == StatusContention {

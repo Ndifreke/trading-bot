@@ -85,10 +85,10 @@ func getMockPriceSource(symbol []string) map[string][]float64 {
 	for i := 1.0; i < 4; i++ {
 		prices = append(prices, max+(i*2))
 	}
-	// prices = append(prices, prices[len(prices)-1]-1)
+	prices = append(prices, prices[len(prices)-1]-1)
 	prices = append(prices, max - 2)
 
-	// For Buy Trigger deep below buy limit and rise again but just not enough
+	//  For Buy Trigger deep below buy limit and rise again but just not enough
 	prices = append(prices, max - 3)
 	prices = append(prices, max - 3 - 4 + 2)
 	prices = append(prices, max - 4)
